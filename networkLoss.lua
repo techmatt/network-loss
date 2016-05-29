@@ -23,29 +23,48 @@ paths.dofile('util.lua')
 paths.dofile('loadModel.lua')
 paths.dofile('imageLoader.lua')
 
-local stuff = getFileListRecursive('/home/mdfisher/ssd2/ImageNet/CLS-LOC/train/')
+--print(opt)
 
---myImageLoader = imageLoader{opt}
+--local allImages = getFileListRecursive('/home/mdfisher/ssd2/ImageNet/CLS-LOC/train/')
+--writeAllLines(opt.imageList, stuff)
 
---myImageLoader:getBatch(opt)
+model = createModel()
+cudnn.convert(model, cudnn)
 
---[[print(opt)
+-- 2. Create Criterion
+criterion = nn.MSECriterion()
+
+print('=> Model')
+print(model)
+
+print('=> Criterion')
+print(criterion)
+
+-- 3. Convert model to CUDA
+print('==> Converting model to CUDA')
+model = model:cuda()
+criterion:cuda()
+
+collectgarbage()
+print('imagelist: ', opt.imageList)
+local imageLoader = makeImageLoader()
+
+local batch = getBatch(imageLoader)
 
 cutorch.setDevice(opt.GPU) -- by default, use GPU 1
 torch.manualSeed(opt.manualSeed)
 
-print('Saving everything to: ' .. opt.save)
-os.execute('mkdir -p ' .. opt.save)
+print('Saving everything to: ' .. opt.outDir)
+os.execute('mkdir -p ' .. opt.outDir)
 
-paths.dofile('data.lua')
 paths.dofile('train.lua')
-paths.dofile('test.lua')
+--paths.dofile('test.lua')
 
-epoch = opt.epochNumber
+epoch = 1
 
-for i=1,opt.nEpochs do
+for i=1,opt.epochCount do
    train()
-   test()
+   --test()
    epoch = epoch + 1
 end
 --]]

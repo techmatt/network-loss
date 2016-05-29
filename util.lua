@@ -3,15 +3,17 @@
 require 'lfs'
 
 function getFileListRecursive(dir)
-    result = {}
+    print('Reading files in ' .. dir)
+    local result = {}
     for file in lfs.dir(dir) do
-        if lfs.attributes(file,"mode") == "file" then
-            result[#result] = file
-        elseif lfs.attributes(file,"mode")== "directory" then
-            --getFileListRecursive(file)
-            --for l in lfs.dir("C:\\Program Files\\"..file) do
-            --     print("",l)
-            --end
+        local path = dir .. '/' .. file
+        if lfs.attributes(path,"mode") == "file" then
+            result[#result + 1] = path
+        elseif lfs.attributes(path,"mode") == "directory" and file:sub(1, 1) ~= '.' then
+            print('directory: ' .. file)
+            for k, v in ipairs(getFileListRecursive(path)) do
+                result[#result + 1] = v
+            end
         end
     end
     return result
@@ -32,9 +34,16 @@ function readAllLines(file)
         print('file not found: ', file)
         return {}
     end
-    lines = {}
+    local lines = {}
     for line in io.lines(file) do 
         lines[#lines + 1] = line
     end
     return lines
+end
+
+function writeAllLines(file, lines)
+    local f = assert(io.open(file, "w"))
+    for i,line in ipairs(lines) do
+        f:write(line .. '\n')
+    end
 end

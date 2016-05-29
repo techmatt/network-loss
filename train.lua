@@ -25,12 +25,6 @@ local optimState = {
     weightDecay = opt.weightDecay
 }
 
---[[if opt.optimState ~= 'none' then
-    assert(paths.filep(opt.optimState), 'File not found: ' .. opt.optimState)
-    print('Loading optimState from file: ' .. opt.optimState)
-    optimState = torch.load(opt.optimState)
-end]]
-
 -- Learning rate annealing schedule. We will build a new optimizer for
 -- each epoch.
 --
@@ -63,13 +57,13 @@ local function paramsForEpoch(epoch)
 end
 
 -- 2. Create loggers.
-trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
+trainLogger = optim.Logger(paths.concat(opt.outDir, 'train.log'))
 local batchNumber
 local top1_epoch, loss_epoch
 
 -- 3. train - this function handles the high-level training loop,
 --            i.e. load data, train model, save model and state to disk
-function train()
+function train(imageLoader)
    print('==> doing epoch on training data:')
    print("==> online epoch # " .. epoch)
 
@@ -90,36 +84,23 @@ function train()
    model:training()
 
    local tm = torch.Timer()
-   top1_epoch = 0
-   loss_epoch = 0
+   lossEpoch = 0
    for i=1,opt.epochSize do
-      local inputs, labels = dataLoader:sample(opt.batchSize)
-      -- queue jobs to data-workers
-      donkeys:addjob(
-         -- the job callback (runs in data-worker thread)
-         function()
-            
-            return inputs, labels
-         end,
-         -- the end callback (runs in the main thread)
-         trainBatch
-      )
+      local batch = sampleBatch(imageLoader)
+      trainBatch(batch.inputs, batch.labels)
    end
 
-   donkeys:synchronize()
    cutorch.synchronize()
 
-   top1_epoch = top1_epoch * 100 / (opt.batchSize * opt.epochSize)
-   loss_epoch = loss_epoch / opt.epochSize
+   lossEpoch = lossEpoch / (opt.batchSize * opt.epochSize)
 
    trainLogger:add{
-      ['% top1 accuracy (train set)'] = top1_epoch,
-      ['avg loss (train set)'] = loss_epoch
+      ['avg loss (train set)'] = lossEpoch
    }
    print(string.format('Epoch: [%d][TRAINING SUMMARY] Total Time(s): %.2f\t'
                           .. 'average loss (per batch): %.2f \t '
                           .. 'accuracy(%%):\t top-1 %.2f\t',
-                       epoch, tm:time().real, loss_epoch, top1_epoch))
+                       epoch, tm:time().real, lossEpoch, lossEpoch))
    print('\n')
 
    -- save model
@@ -128,9 +109,9 @@ function train()
    -- clear the intermediate states in the model before saving to disk
    -- this saves lots of disk space
    model:clearState()
-   saveDataParallel(paths.concat(opt.save, 'model_' .. epoch .. '.t7'), model) -- defined in util.lua
-   torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
-end -- of train()
+   --torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
+end
+
 -------------------------------------------------------------------------------------------
 -- GPU inputs (preallocate)
 local inputs = torch.CudaTensor()
@@ -163,30 +144,13 @@ function trainBatch(inputsCPU, labelsCPU)
    end
    optim.adam(feval, parameters, optimState)
 
-   -- DataParallelTable's syncParameters
-   if model.needsSync then
-      model:syncParameters()
-   end
-   
-
    cutorch.synchronize()
    batchNumber = batchNumber + 1
-   loss_epoch = loss_epoch + err
-   -- top-1 error
-   local top1 = 0
-   do
-      local _,prediction_sorted = outputs:float():sort(2, true) -- descending
-      for i=1,opt.batchSize do
-	 if prediction_sorted[i][1] == labelsCPU[i] then
-	    top1_epoch = top1_epoch + 1;
-	    top1 = top1 + 1
-	 end
-      end
-      top1 = top1 * 100 / opt.batchSize;
-   end
+   lossEpoch = lossEpoch + err
+   
    -- Calculate top-1 error, and print information
    print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1-%%: %.2f LR %.0e DataLoadingTime %.3f'):format(
-          epoch, batchNumber, opt.epochSize, timer:time().real, err, top1,
+          epoch, batchNumber, opt.epochSize, timer:time().real, err, err,
           optimState.learningRate, dataLoadingTime))
 
    dataTimer:reset()

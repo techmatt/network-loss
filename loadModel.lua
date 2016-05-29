@@ -55,22 +55,3 @@ function createModel()
 
    return transformNetwork
 end
-
-model = createModel()
-cudnn.convert(model, cudnn)
-
--- 2. Create Criterion
-criterion = nn.MSECriterion()
-
-print('=> Model')
-print(model)
-
-print('=> Criterion')
-print(criterion)
-
--- 3. Convert model to CUDA
-print('==> Converting model to CUDA')
-model = model:cuda()
-criterion:cuda()
-
-collectgarbage()

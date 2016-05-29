@@ -1,33 +1,68 @@
 
-local imageLoaderClass = torch.class('imageLoader')
+-- TODO: turn this into a class
+require 'image'
 
-function imageLoaderClass:__init(opt)
-
-    print('Initializing images from: ', opt.imageList)
-    self.imageList = readAllLines(opt.imageList)
-    self.imageCount = #self.imageList
-    print('loaded ' .. self.imageCount .. ' images')
+function makeImageLoader()
+    print('Initializing images from: ' .. opt.imageList)
+    
+    local result = {}
+    result.imageList = readAllLines(opt.imageList)
+    result.imageCount = #result.imageList
+    print('loaded ' .. result.imageCount .. ' images')
+    return result
 end
 
-function imageLoaderClass:getBatch(opt)
-    local batchSize = utils.getopt(opt, 'batchSize', 5)
+local loadSize   = {3, opt.imageSize, opt.imageSize}
+local sampleSize = {3, opt.cropSize, opt.cropSize}
+
+local function loadAndResizeImage(path)
+   local input = image.load(path, 3, 'float')
+   -- find the smaller dimension, and resize it to loadSize (while keeping aspect ratio)
+   if input:size(3) < input:size(2) then
+      input = image.scale(input, loadSize[2], loadSize[3] * input:size(2) / input:size(3))
+   else
+      input = image.scale(input, loadSize[2] * input:size(3) / input:size(2), loadSize[3])
+   end
+   return input
+end
+
+-- function to load the image, jitter it appropriately (random crops etc.)
+local function loadAndCropImage(path)
+   collectgarbage()
+   local input = loadAndResizeImage(path)
+   local iW = input:size(3)
+   local iH = input:size(2)
+
+   -- do random crop
+   local oW = sampleSize[3]
+   local oH = sampleSize[2]
+   local h1 = math.ceil(torch.uniform(1e-2, iH-oH))
+   local w1 = math.ceil(torch.uniform(1e-2, iW-oW))
+   local out = image.crop(input, w1, h1, w1 + oW, h1 + oH)
+   assert(out:size(3) == oW)
+   assert(out:size(2) == oH)
+   -- do hflip with probability 0.5
+   if torch.uniform() > 0.5 then out = image.hflip(out) end
+   return out
+end
+
+function getBatch(imageLoader)
+    local batchSize = opt.batchSize
     
     -- pick an index of the datapoint to load next
-    local batchImages = torch.FloatTensor(batchSize, 3, 256, 256)
-    local batchLabels = torch.FloatTensor(batchSize, 3, 256, 256)
+    local batchInputs = torch.FloatTensor(batchSize, 3, opt.cropSize, opt.cropSize)
+    local batchLabels = torch.FloatTensor(batchSize, 3, opt.cropSize, opt.cropSize)
     
     for i = 1, batchSize do
-        local imageFilename = self.imageList[ math.random( #self.imageList ) ]
-        local imgA = image.load(imageFilename,3,'float')
-        local imgB = image.load(imageFilename,3,'float')
-        batchImages[i] = imgA
+        local imageFilename = imageLoader.imageList[ math.random( #imageLoader.imageList ) ]
+        local imgA = loadAndCropImage(imageFilename)
+        local imgB = loadAndCropImage(imageFilename)
+        batchInputs[i] = imgA
         batchLabels[i] = imgB
     end
     
     local batch = {}
-    batch.images = batchImages
+    batch.inputs = batchInputs
     batch.labels = batchLabels
     return batch
 end
-
-return imageLoaderClass
