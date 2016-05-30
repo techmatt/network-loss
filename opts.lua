@@ -18,7 +18,7 @@ function M.parse(arg)
     ------------ Network loss options ---------------
     cmd:option('-outDir', '/home/mdfisher/code/network-loss/out/', 'TODO')
     cmd:option('-imageList', '/home/mdfisher/code/network-loss/data/imageList.txt', 'TODO')
-    cmd:option('-batchSize', 32, 'mini-batch size (1 = pure stochastic)')
+    cmd:option('-batchSize', 8, 'mini-batch size (1 = pure stochastic)')
     cmd:option('-imageSize', 256, 'Smallest side of the resized image')
     cmd:option('-cropSize', 250, 'Height and Width of image crop to be used as input layer')
     

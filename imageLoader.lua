@@ -50,7 +50,7 @@ function sampleBatch(imageLoader)
     local batchSize = opt.batchSize
     
     -- pick an index of the datapoint to load next
-    local batchInputs = torch.FloatTensor(batchSize, 1, opt.cropSize, opt.cropSize)
+    local batchInputs = torch.FloatTensor(batchSize, 3, opt.cropSize, opt.cropSize)
     local batchLabels = torch.FloatTensor(batchSize, 3, opt.cropSize, opt.cropSize)
     
     --[[for i = 1, batchSize do
@@ -78,12 +78,17 @@ function sampleBatch(imageLoader)
         local imageFilename = imageLoader.imageList[ math.random( #imageLoader.imageList ) ]
         donkeys:addjob(
             function()
-                local imgTarget = loadAndCropImage(imageFilename)
-                imgTarget:add(-0.5)
-                local imgInput = torch.FloatTensor(1, opt.cropSize, opt.cropSize):zero()
-                imgInput:add(0.299, imgTarget:select(1, 1))
-                imgInput:add(0.587, imgTarget:select(1, 2))
-                imgInput:add(0.114, imgTarget:select(1, 3))
+                local imgInput = loadAndCropImage(imageFilename)
+                local imgTarget = imgInput
+                --local imgTarget = caffePreprocess(imgInput:clone())
+                --imgInput:add(-0.5)
+                
+                -- Grayscale image
+                --local imgInput = torch.FloatTensor(1, opt.cropSize, opt.cropSize):zero()
+                --imgInput:add(0.299, imgTarget:select(1, 1))
+                --imgInput:add(0.587, imgTarget:select(1, 2))
+                --imgInput:add(0.114, imgTarget:select(1, 3))
+                
                 return imgInput, imgTarget
             end,
             function(imgInput, imgTarget)

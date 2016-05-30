@@ -1,11 +1,4 @@
---
---  Copyright (c) 2014, Facebook, Inc.
---  All rights reserved.
---
---  This source code is licensed under the BSD-style license found in the
---  LICENSE file in the root directory of this source tree. An additional grant
---  of patent rights can be found in the PATENTS file in the same directory.
---
+
 require 'optim'
 
 --[[
@@ -82,7 +75,7 @@ function train(imageLoader)
     cutorch.synchronize()
 
     -- set the dropouts to training mode
-    model:training()
+    fullNetwork:training()
 
     local tm = torch.Timer()
     lossEpoch = 0
@@ -135,7 +128,7 @@ local labels = torch.CudaTensor()
 local timer = torch.Timer()
 local dataTimer = torch.Timer()
 
-local parameters, gradParameters = model:getParameters()
+local parameters, gradParameters = fullNetwork:getParameters()
 
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, labelsCPU)
@@ -148,27 +141,48 @@ function trainBatch(inputsCPU, labelsCPU)
     inputs:resize(inputsCPU:size()):copy(inputsCPU)
     labels:resize(labelsCPU:size()):copy(labelsCPU)
 
-    --dumpNet(model, inputs)
-
-    local err, outputs
+    if totalBatchCount == 0 then
+        --dumpNet(fullNetwork, inputs, opt.outDir .. 'full/')
+        --dumpNet(vggContentNetwork, labels, opt.outDir .. 'content/')
+    end
+    
+    --fullNetwork, transformNetwork, vggContentNetwork
+        
+    local err, contentOutputs, contentTargets
     feval = function(x)
-        model:zeroGradParameters()
-        outputs = model:forward(inputs)
+        --contentTargets = vggContentNetwork:forward(labels):clone()
+        
+        fullNetwork:zeroGradParameters()
+        contentOutputs = fullNetwork:forward(inputs)
+        
+        if totalBatchCount == 0 then
+            --saveTensor(inputs, opt.outDir .. 'inputs.csv')
+            --saveTensor(labels, opt.outDir .. 'labels.csv')
+            --saveTensor(contentTargets, opt.outDir .. 'contentTargets.csv')
+            --saveTensor(contentOutputs, opt.outDir .. 'contentOutputs.csv')
+        end
 
         if totalBatchCount % 100 == 0 then
             local inClone = inputs[1]:clone()
             inClone:add(0.5)
-            local outClone = outputs[1]:clone()
-            outClone:add(0.5)
+            --local outClone = outputs[1]:clone()
+            --outClone:add(0.5)
             
             image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_in.png', inClone)
-            image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_out.png', outClone)
+            --image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_out.png', outClone)
         end
 
-        err = criterion:forward(outputs, labels)
-        local gradOutputs = criterion:backward(outputs, labels)
-        model:backward(inputs, gradOutputs)
+        err = contentCriterion:forward(contentOutputs, labels)
+        local gradOutputs = contentCriterion:backward(contentOutputs, labels)
+        fullNetwork:backward(inputs, gradOutputs)
         return err, gradParameters
+        
+        --[[err = contentCriterion:forward(contentOutputs, contentTargets)
+        local gradOutputs = contentCriterion:backward(contentOutputs, contentTargets)
+        fullNetwork:backward(inputs, gradOutputs)
+        --vggContentNetwork:zeroGradParameters()
+        
+        return err, gradParameters]]
     end
     optim.adam(feval, parameters, optimState)
 

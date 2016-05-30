@@ -2,7 +2,7 @@
 --
 -- debug coonfig options
 --
-local printModel = true
+local printModel = false
 
 require 'torch'
 require 'cutorch'
@@ -27,28 +27,30 @@ paths.dofile('imageLoader.lua')
 --local allImages = getFileListRecursive('/home/mdfisher/ssd2/ImageNet/CLS-LOC/train/')
 --writeAllLines(opt.imageList, stuff)
 
-fullNetwork, transformNetwork, lossModules = createModel()
+fullNetwork, transformNetwork, vggContentNetwork, styleLossModules = createModel()
 cudnn.convert(fullNetwork, cudnn)
 cudnn.convert(transformNetwork, cudnn)
+cudnn.convert(vggContentNetwork, cudnn)
 
 -- 2. Create Criterion
-criterion = nn.MSECriterion()
+contentCriterion = nn.MSECriterion()
 
 -- 3. Convert model to CUDA
 print('==> Converting model to CUDA')
 fullNetwork = fullNetwork:cuda()
 transformNetwork = transformNetwork:cuda()
-criterion:cuda()
+vggContentNetwork = vggContentNetwork:cuda()
+contentCriterion:cuda()
 
 if printModel then
     print('=> Model')
     print(fullNetwork)
 
     print('=> Criterion')
-    print(criterion)
+    print(contentCriterion)
 end
 
---[[collectgarbage()
+collectgarbage()
 print('imagelist: ', opt.imageList)
 local imageLoader = makeImageLoader()
 
@@ -71,4 +73,4 @@ for i=1,opt.epochCount do
    --test()
    epoch = epoch + 1
 end
---]]
+

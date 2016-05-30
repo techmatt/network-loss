@@ -14,6 +14,7 @@ do -- start K datathreads (donkeys)
             function()
                 require 'torch'
                 require 'image'
+                require 'nnModules'
             end,
             function(idx)
                 opt = options -- pass to all donkeys via upvalue
@@ -36,4 +37,4 @@ nTest = 0
 donkeys:addjob(function() return 128 end, function(c) nTest = c end)
 donkeys:synchronize()
 assert(nTest > 0, "Failed to get nTest")
-print('nTest: ', nTest)
+print('nTest: ', nTest)require 'image'
