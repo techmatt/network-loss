@@ -46,20 +46,49 @@ local function loadAndCropImage(path)
    return out
 end
 
-function getBatch(imageLoader)
+function sampleBatch(imageLoader)
     local batchSize = opt.batchSize
     
     -- pick an index of the datapoint to load next
     local batchInputs = torch.FloatTensor(batchSize, 3, opt.cropSize, opt.cropSize)
     local batchLabels = torch.FloatTensor(batchSize, 3, opt.cropSize, opt.cropSize)
     
-    for i = 1, batchSize do
+    --[[for i = 1, batchSize do
         local imageFilename = imageLoader.imageList[ math.random( #imageLoader.imageList ) ]
-        local imgA = loadAndCropImage(imageFilename)
-        local imgB = loadAndCropImage(imageFilename)
+        
+        donkeys:addjob(
+            function()
+                local img = loadAndCropImage(imageFilename)
+                img:add(-0.5)
+                return img
+            end,
+            function(img)
+                batchInputs[i] = imgA
+                batchLabels[i] = imgB
+            end)
+        --local imgA = loadAndCropImage(imageFilename)
+        --
+        
+        --local imgB = loadAndCropImage(imageFilename)
+        local imgB = imgA
         batchInputs[i] = imgA
         batchLabels[i] = imgB
+    end]]
+    for i = 1, batchSize do
+        local imageFilename = imageLoader.imageList[ math.random( #imageLoader.imageList ) ]
+        
+        donkeys:addjob(
+            function()
+                local img = loadAndCropImage(imageFilename)
+                img:add(-0.5)
+                return img
+            end,
+            function(img)
+                batchInputs[i] = img
+                batchLabels[i] = img
+            end)
     end
+    donkeys:synchronize()
     
     local batch = {}
     batch.inputs = batchInputs

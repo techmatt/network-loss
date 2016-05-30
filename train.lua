@@ -42,11 +42,11 @@ local function paramsForEpoch(epoch)
     end
     local regimes = {
         -- start, end,    LR,   WD,
-        {  1,     18,   1e-2,   5e-4, },
-        { 19,     29,   5e-3,   5e-4  },
-        { 30,     43,   1e-3,   0 },
-        { 44,     52,   5e-4,   0 },
-        { 53,    1e8,   1e-4,   0 },
+        {  1,     18,   1e-3,   5e-4, },
+        { 19,     29,   5e-4,   5e-4  },
+        { 30,     43,   1e-5,   0 },
+        { 44,     52,   5e-6,   0 },
+        { 53,    1e8,   1e-6,   0 },
     }
 
     for _, row in ipairs(regimes) do
@@ -59,57 +59,72 @@ end
 -- 2. Create loggers.
 trainLogger = optim.Logger(paths.concat(opt.outDir, 'train.log'))
 local batchNumber
+local totalBatchCount = 0
 local top1_epoch, loss_epoch
 
 -- 3. train - this function handles the high-level training loop,
 --            i.e. load data, train model, save model and state to disk
 function train(imageLoader)
-   print('==> doing epoch on training data:')
-   print("==> online epoch # " .. epoch)
+    print('==> doing epoch on training data:')
+    print("==> online epoch # " .. epoch)
 
-   local params, newRegime = paramsForEpoch(epoch)
-   if newRegime then
-      optimState = {
-         learningRate = params.learningRate,
-         learningRateDecay = 0.0,
-         momentum = opt.momentum,
-         dampening = 0.0,
-         weightDecay = params.weightDecay
-      }
-   end
-   batchNumber = 0
-   cutorch.synchronize()
+    local params, newRegime = paramsForEpoch(epoch)
+    if newRegime then
+        optimState = {
+        learningRate = params.learningRate,
+        learningRateDecay = 0.0,
+        momentum = opt.momentum,
+        dampening = 0.0,
+        weightDecay = params.weightDecay
+        }
+    end
+    batchNumber = 0
+    cutorch.synchronize()
 
-   -- set the dropouts to training mode
-   model:training()
+    -- set the dropouts to training mode
+    model:training()
 
-   local tm = torch.Timer()
-   lossEpoch = 0
-   for i=1,opt.epochSize do
-      local batch = sampleBatch(imageLoader)
-      trainBatch(batch.inputs, batch.labels)
-   end
+    local tm = torch.Timer()
+    lossEpoch = 0
+    for i = 1, opt.epochSize do
+        local batch = sampleBatch(imageLoader)
+        trainBatch(batch.inputs, batch.labels)
+    end
+    
+    --[[for i = 1, opt.epochSize do
+        -- queue jobs to data-workers
+        donkeys:addjob(
+            -- the job callback (runs in data-worker thread)
+            function()
+                local batch = sampleBatch(imageLoader)
+                return batch.inputs, batch.labels
+            end,
+            -- the end callback (runs in the main thread)
+            trainBatch
+        )
+    end
+    donkeys:synchronize()]]
 
-   cutorch.synchronize()
+    cutorch.synchronize()
 
-   lossEpoch = lossEpoch / (opt.batchSize * opt.epochSize)
+    lossEpoch = lossEpoch / (opt.batchSize * opt.epochSize)
 
-   trainLogger:add{
-      ['avg loss (train set)'] = lossEpoch
-   }
-   print(string.format('Epoch: [%d][TRAINING SUMMARY] Total Time(s): %.2f\t'
-                          .. 'average loss (per batch): %.2f \t '
-                          .. 'accuracy(%%):\t top-1 %.2f\t',
-                       epoch, tm:time().real, lossEpoch, lossEpoch))
-   print('\n')
+    trainLogger:add{
+    ['avg loss (train set)'] = lossEpoch
+    }
+    print(string.format('Epoch: [%d][TRAINING SUMMARY] Total Time(s): %.2f\t'
+        .. 'average loss (per batch): %.2f \t '
+        .. 'accuracy(%%):\t top-1 %.2f\t',
+        epoch, tm:time().real, lossEpoch, lossEpoch))
+    print('\n')
 
-   -- save model
-   collectgarbage()
+    -- save model
+    collectgarbage()
 
-   -- clear the intermediate states in the model before saving to disk
-   -- this saves lots of disk space
-   model:clearState()
-   --torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
+    -- clear the intermediate states in the model before saving to disk
+    -- this saves lots of disk space
+    --model:clearState()
+    --torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
 end
 
 -------------------------------------------------------------------------------------------
@@ -124,34 +139,48 @@ local parameters, gradParameters = model:getParameters()
 
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, labelsCPU)
-   cutorch.synchronize()
-   collectgarbage()
-   local dataLoadingTime = dataTimer:time().real
-   timer:reset()
+    cutorch.synchronize()
+    collectgarbage()
+    local dataLoadingTime = dataTimer:time().real
+    timer:reset()
 
-   -- transfer over to GPU
-   inputs:resize(inputsCPU:size()):copy(inputsCPU)
-   labels:resize(labelsCPU:size()):copy(labelsCPU)
+    -- transfer over to GPU
+    inputs:resize(inputsCPU:size()):copy(inputsCPU)
+    labels:resize(labelsCPU:size()):copy(labelsCPU)
 
-   local err, outputs
-   feval = function(x)
-      model:zeroGradParameters()
-      outputs = model:forward(inputs)
-      err = criterion:forward(outputs, labels)
-      local gradOutputs = criterion:backward(outputs, labels)
-      model:backward(inputs, gradOutputs)
-      return err, gradParameters
-   end
-   optim.adam(feval, parameters, optimState)
+    --dumpNet(model, inputs)
 
-   cutorch.synchronize()
-   batchNumber = batchNumber + 1
-   lossEpoch = lossEpoch + err
-   
-   -- Calculate top-1 error, and print information
-   print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1-%%: %.2f LR %.0e DataLoadingTime %.3f'):format(
-          epoch, batchNumber, opt.epochSize, timer:time().real, err, err,
-          optimState.learningRate, dataLoadingTime))
+    local err, outputs
+    feval = function(x)
+        model:zeroGradParameters()
+        outputs = model:forward(inputs)
 
-   dataTimer:reset()
+        if totalBatchCount % 100 == 0 then
+            local inClone = inputs[1]:clone()
+            inClone:add(0.5)
+            local outClone = outputs[1]:clone()
+            outClone:add(0.5)
+            
+            image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_in.png', inClone)
+            image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_out.png', outClone)
+        end
+
+        err = criterion:forward(outputs, labels)
+        local gradOutputs = criterion:backward(outputs, labels)
+        model:backward(inputs, gradOutputs)
+        return err, gradParameters
+    end
+    optim.adam(feval, parameters, optimState)
+
+    cutorch.synchronize()
+    batchNumber = batchNumber + 1
+    lossEpoch = lossEpoch + err
+
+    -- Calculate top-1 error, and print information
+    print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1-%%: %.2f LR %.0e DataLoadingTime %.3f'):format(
+        epoch, batchNumber, opt.epochSize, timer:time().real, err, err,
+        optimState.learningRate, dataLoadingTime))
+
+    dataTimer:reset()
+    totalBatchCount = totalBatchCount + 1
 end

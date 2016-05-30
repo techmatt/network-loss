@@ -20,6 +20,7 @@ local opts = paths.dofile('opts.lua')
 opt = opts.parse(arg)
 
 paths.dofile('util.lua')
+paths.dofile('torchUtil.lua')
 paths.dofile('loadModel.lua')
 paths.dofile('imageLoader.lua')
 
@@ -34,11 +35,11 @@ cudnn.convert(model, cudnn)
 -- 2. Create Criterion
 criterion = nn.MSECriterion()
 
-print('=> Model')
+--[[print('=> Model')
 print(model)
 
 print('=> Criterion')
-print(criterion)
+print(criterion)]]
 
 -- 3. Convert model to CUDA
 print('==> Converting model to CUDA')
@@ -49,7 +50,7 @@ collectgarbage()
 print('imagelist: ', opt.imageList)
 local imageLoader = makeImageLoader()
 
-local batch = getBatch(imageLoader)
+--local batch = sampleBatch(imageLoader)
 
 cutorch.setDevice(opt.GPU) -- by default, use GPU 1
 torch.manualSeed(opt.manualSeed)
@@ -57,13 +58,14 @@ torch.manualSeed(opt.manualSeed)
 print('Saving everything to: ' .. opt.outDir)
 os.execute('mkdir -p ' .. opt.outDir)
 
+paths.dofile('threadPool.lua')
 paths.dofile('train.lua')
 --paths.dofile('test.lua')
 
 epoch = 1
 
 for i=1,opt.epochCount do
-   train()
+   train(imageLoader)
    --test()
    epoch = epoch + 1
 end
