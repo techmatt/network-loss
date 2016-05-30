@@ -18,16 +18,20 @@ function M.parse(arg)
     ------------ Network loss options ---------------
     cmd:option('-outDir', '/home/mdfisher/code/network-loss/out/', 'TODO')
     cmd:option('-imageList', '/home/mdfisher/code/network-loss/data/imageList.txt', 'TODO')
-    cmd:option('-batchSize', 16, 'mini-batch size (1 = pure stochastic)')
+    cmd:option('-batchSize', 32, 'mini-batch size (1 = pure stochastic)')
     cmd:option('-imageSize', 256, 'Smallest side of the resized image')
     cmd:option('-cropSize', 250, 'Height and Width of image crop to be used as input layer')
+    
+    cmd:option('-contentWeight', 1.0, 'TODO')
+    cmd:option('-contentImage', 'examples/inputs/tubingen.jpg', 'TODO')
+    
     
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')
     cmd:option('-GPU',                1, 'Default preferred GPU')
     
     ------------- Training options --------------------
     cmd:option('-epochCount',         55,    'Number of total epochs to run')
-    cmd:option('-epochSize',       200, 'Number of batches per epoch')
+    cmd:option('-epochSize',       1000, 'Number of batches per epoch')
     cmd:option('-epochNumber',     1,     'Manual epoch number (useful on restarts)')
     
     ---------- Optimization options ----------------------
@@ -36,7 +40,7 @@ function M.parse(arg)
     cmd:option('-weightDecay',     5e-4, 'weight decay')
     
     ------------- Data options ------------------------
-    cmd:option('-nDonkeys',        8, 'number of donkeys to initialize (data loading threads)')
+    cmd:option('-nDonkeys',        12, 'number of donkeys to initialize (data loading threads)')
     
     
     ------------ General options --------------------

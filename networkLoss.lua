@@ -1,11 +1,9 @@
+
 --
---  Copyright (c) 2014, Facebook, Inc.
---  All rights reserved.
+-- debug coonfig options
 --
---  This source code is licensed under the BSD-style license found in the
---  LICENSE file in the root directory of this source tree. An additional grant
---  of patent rights can be found in the PATENTS file in the same directory.
---
+local printModel = true
+
 require 'torch'
 require 'cutorch'
 require 'paths'
@@ -29,24 +27,28 @@ paths.dofile('imageLoader.lua')
 --local allImages = getFileListRecursive('/home/mdfisher/ssd2/ImageNet/CLS-LOC/train/')
 --writeAllLines(opt.imageList, stuff)
 
-model = createModel()
-cudnn.convert(model, cudnn)
+fullNetwork, transformNetwork, lossModules = createModel()
+cudnn.convert(fullNetwork, cudnn)
+cudnn.convert(transformNetwork, cudnn)
 
 -- 2. Create Criterion
 criterion = nn.MSECriterion()
 
---[[print('=> Model')
-print(model)
-
-print('=> Criterion')
-print(criterion)]]
-
 -- 3. Convert model to CUDA
 print('==> Converting model to CUDA')
-model = model:cuda()
+fullNetwork = fullNetwork:cuda()
+transformNetwork = transformNetwork:cuda()
 criterion:cuda()
 
-collectgarbage()
+if printModel then
+    print('=> Model')
+    print(fullNetwork)
+
+    print('=> Criterion')
+    print(criterion)
+end
+
+--[[collectgarbage()
 print('imagelist: ', opt.imageList)
 local imageLoader = makeImageLoader()
 
