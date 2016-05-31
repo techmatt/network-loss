@@ -128,7 +128,7 @@ local labels = torch.CudaTensor()
 local timer = torch.Timer()
 local dataTimer = torch.Timer()
 
-local parameters, gradParameters = transformNetwork:getParameters()
+local parameters, gradParameters = fullNetwork:getParameters()
 
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, labelsCPU)
@@ -148,20 +148,13 @@ function trainBatch(inputsCPU, labelsCPU)
         
     local err, contentOutputs, contentTargets
     feval = function(x)
-        transformNetwork:zeroGradParameters()
-        outputs = transformNetwork:forward(inputs)
+        contentTargets = vggContentNetwork:forward(labels):clone()
         
-        if totalBatchCount == 0 then
-            --saveTensor(inputs, opt.outDir .. 'inputs.csv')
-            --saveTensor(labels, opt.outDir .. 'labels.csv')
-            --saveTensor(contentTargets, opt.outDir .. 'contentTargets.csv')
-            --saveTensor(contentOutputs, opt.outDir .. 'contentOutputs.csv')
-        end
-
         if totalBatchCount % 100 == 0 then
             local inClone = inputs[1]:clone()
             inClone:add(0.5)
-            local outClone = outputs[1]:clone()
+            
+            local outClone = transformNetwork:forward(inputs)[1]:clone()
             outClone = caffeDeprocess(outClone)
             --outClone:add(0.5)
             
@@ -169,9 +162,23 @@ function trainBatch(inputsCPU, labelsCPU)
             image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_out.png', outClone)
         end
         
-        err = contentCriterion:forward(outputs, labels)
-        local gradOutputs = contentCriterion:backward(outputs, labels)
-        transformNetwork:backward(inputs, gradOutputs)
+        fullNetwork:zeroGradParameters()
+        contentOutputs = fullNetwork:forward(inputs)
+        
+        --outputs = transformNetwork:forward(inputs)
+        
+        if totalBatchCount == 0 then
+            --saveTensor(inputs, opt.outDir .. 'inputs.csv')
+            --saveTensor(labels, opt.outDir .. 'labels.csv')
+            --saveTensor(contentTargets, opt.outDir .. 'contentTargets.csv')
+            --saveTensor(contentOutputs, opt.outDir .. 'contentOutputs.csv')
+        end
+        
+        err = contentCriterion:forward(contentOutputs, contentTargets)
+        local gradOutputs = contentCriterion:backward(contentOutputs, contentTargets)
+        fullNetwork:backward(inputs, gradOutputs)
+        vggContentNetwork:zeroGradParameters()
+        
         return err, gradParameters
     end
     optim.adam(feval, parameters, optimState)
@@ -181,8 +188,8 @@ function trainBatch(inputsCPU, labelsCPU)
     lossEpoch = lossEpoch + err
 
     -- Calculate top-1 error, and print information
-    print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f Top1-%%: %.2f LR %.0e DataLoadingTime %.3f'):format(
-        epoch, batchNumber, opt.epochSize, timer:time().real, err, err,
+    print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f LR %.0e DataLoadingTime %.3f'):format(
+        epoch, batchNumber, opt.epochSize, timer:time().real, err,
         optimState.learningRate, dataLoadingTime))
 
     dataTimer:reset()

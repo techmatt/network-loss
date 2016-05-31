@@ -103,17 +103,17 @@ function createModel()
    
    addConvElement(transformNetwork, 128, 128, 3, 1, 1)
    addConvElement(transformNetwork, 128, 128, 3, 1, 1)
+   --[[addConvElement(transformNetwork, 128, 128, 3, 1, 1)
    addConvElement(transformNetwork, 128, 128, 3, 1, 1)
-   addConvElement(transformNetwork, 128, 128, 3, 1, 1)
-   addConvElement(transformNetwork, 128, 128, 3, 1, 1)
+   addConvElement(transformNetwork, 128, 128, 3, 1, 1)]]
    
    addUpConvElement(transformNetwork, 128, 64, 3, 2, 1, 0)
    addUpConvElement(transformNetwork, 64, 32, 3, 2, 2, 1)
    
    transformNetwork:add(nn.SpatialConvolution(32,3,3,3,1,1,0,0))
    
-   --local vggContentNetwork, styleLossModules = createVGG()
-   local vggContentNetwork, styleLossModules = createVGGDebug()
+   local vggContentNetwork, styleLossModules = createVGG()
+   --local vggContentNetwork, styleLossModules = createVGGDebug()
    
    fullNetwork:add(transformNetwork)
    fullNetwork:add(vggContentNetwork)

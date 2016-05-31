@@ -33,8 +33,8 @@ do -- start K datathreads (donkeys)
     end
 end
 
-nTest = 0
-donkeys:addjob(function() return 128 end, function(c) nTest = c end)
-donkeys:synchronize()
-assert(nTest > 0, "Failed to get nTest")
-print('nTest: ', nTest)require 'image'
+--nTest = 0
+--donkeys:addjob(function() return 128 end, function(c) nTest = c end)
+--donkeys:synchronize()
+--assert(nTest > 0, "Failed to get nTest")
+--print('nTest: ', nTest)
