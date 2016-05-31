@@ -134,3 +134,13 @@ function caffePreprocess(img)
   img:add(-1, mean_pixel)
   return img
 end
+
+-- Undo the above preprocessing.
+function caffeDeprocess(img)
+  local mean_pixel = torch.CudaTensor({103.939, 116.779, 123.68})
+  mean_pixel = mean_pixel:view(3, 1, 1):expandAs(img)
+  img = img + mean_pixel
+  local perm = torch.LongTensor{3, 2, 1}
+  img = img:index(1, perm):div(256.0)
+  return img
+end

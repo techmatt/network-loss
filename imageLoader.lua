@@ -79,9 +79,11 @@ function sampleBatch(imageLoader)
         donkeys:addjob(
             function()
                 local imgInput = loadAndCropImage(imageFilename)
-                local imgTarget = imgInput
-                --local imgTarget = caffePreprocess(imgInput:clone())
-                --imgInput:add(-0.5)
+                --local imgTarget = imgInput
+                
+                local imgTarget = caffePreprocess(imgInput:clone())
+                imgInput:add(-0.5)
+                
                 
                 -- Grayscale image
                 --local imgInput = torch.FloatTensor(1, opt.cropSize, opt.cropSize):zero()

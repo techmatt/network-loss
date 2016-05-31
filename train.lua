@@ -35,7 +35,7 @@ local function paramsForEpoch(epoch)
     end
     local regimes = {
         -- start, end,    LR,   WD,
-        {  1,     10,   1e-4,   5e-4, },
+        {  1,     10,   1e-2,   5e-4, },
         { 11,     29,   1e-5,   5e-4  },
         { 30,     43,   1e-6,   0 },
         { 44,     52,   5e-7,   0 },
@@ -128,7 +128,7 @@ local labels = torch.CudaTensor()
 local timer = torch.Timer()
 local dataTimer = torch.Timer()
 
-local parameters, gradParameters = fullNetwork:getParameters()
+local parameters, gradParameters = transformNetwork:getParameters()
 
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, labelsCPU)
@@ -145,15 +145,11 @@ function trainBatch(inputsCPU, labelsCPU)
         --dumpNet(fullNetwork, inputs, opt.outDir .. 'full/')
         --dumpNet(vggContentNetwork, labels, opt.outDir .. 'content/')
     end
-    
-    --fullNetwork, transformNetwork, vggContentNetwork
         
     local err, contentOutputs, contentTargets
     feval = function(x)
-        --contentTargets = vggContentNetwork:forward(labels):clone()
-        
-        fullNetwork:zeroGradParameters()
-        contentOutputs = fullNetwork:forward(inputs)
+        transformNetwork:zeroGradParameters()
+        outputs = transformNetwork:forward(inputs)
         
         if totalBatchCount == 0 then
             --saveTensor(inputs, opt.outDir .. 'inputs.csv')
@@ -165,24 +161,18 @@ function trainBatch(inputsCPU, labelsCPU)
         if totalBatchCount % 100 == 0 then
             local inClone = inputs[1]:clone()
             inClone:add(0.5)
-            --local outClone = outputs[1]:clone()
+            local outClone = outputs[1]:clone()
+            outClone = caffeDeprocess(outClone)
             --outClone:add(0.5)
             
             image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_in.png', inClone)
-            --image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_out.png', outClone)
+            image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_out.png', outClone)
         end
-
-        err = contentCriterion:forward(contentOutputs, labels)
-        local gradOutputs = contentCriterion:backward(contentOutputs, labels)
-        fullNetwork:backward(inputs, gradOutputs)
+        
+        err = contentCriterion:forward(outputs, labels)
+        local gradOutputs = contentCriterion:backward(outputs, labels)
+        transformNetwork:backward(inputs, gradOutputs)
         return err, gradParameters
-        
-        --[[err = contentCriterion:forward(contentOutputs, contentTargets)
-        local gradOutputs = contentCriterion:backward(contentOutputs, contentTargets)
-        fullNetwork:backward(inputs, gradOutputs)
-        --vggContentNetwork:zeroGradParameters()
-        
-        return err, gradParameters]]
     end
     optim.adam(feval, parameters, optimState)
 
@@ -198,3 +188,24 @@ function trainBatch(inputsCPU, labelsCPU)
     dataTimer:reset()
     totalBatchCount = totalBatchCount + 1
 end
+
+--[[
+    local err, contentOutputs, contentTargets
+    feval = function(x)
+        --contentTargets = vggContentNetwork:forward(labels):clone()
+        
+        fullNetwork:zeroGradParameters()
+        contentOutputs = fullNetwork:forward(inputs)
+
+        err = contentCriterion:forward(contentOutputs, labels)
+        local gradOutputs = contentCriterion:backward(contentOutputs, labels)
+        fullNetwork:backward(inputs, gradOutputs)
+        return err, gradParameters
+        
+        --[[err = contentCriterion:forward(contentOutputs, contentTargets)
+        local gradOutputs = contentCriterion:backward(contentOutputs, contentTargets)
+        fullNetwork:backward(inputs, gradOutputs)
+        --vggContentNetwork:zeroGradParameters()
+        
+        return err, gradParameters
+    end]]

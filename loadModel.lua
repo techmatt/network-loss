@@ -34,6 +34,7 @@ function createVGGDebug()
     local styleLossModules = {}
     local vggContentOut = nn.Sequential()
     vggContentOut:add(nn.SpatialConvolution(3,3,1,1,1,1,0,0))
+    --vggContentOut:add(nn.SpatialConvolution(32,3,3,3,1,1,0,0))
     
     collectgarbage()
     return vggContentOut, styleLossModules
