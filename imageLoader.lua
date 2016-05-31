@@ -7,8 +7,7 @@ function makeImageLoader()
     
     local result = {}
     result.imageList = readAllLines(opt.imageList)
-    result.imageCount = #result.imageList
-    print('loaded ' .. result.imageCount .. ' images')
+    print('loaded ' .. #result.imageList .. ' images')
     return result
 end
 

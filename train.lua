@@ -84,20 +84,6 @@ function train(imageLoader)
         trainBatch(batch.inputs, batch.labels)
     end
     
-    --[[for i = 1, opt.epochSize do
-        -- queue jobs to data-workers
-        donkeys:addjob(
-            -- the job callback (runs in data-worker thread)
-            function()
-                local batch = sampleBatch(imageLoader)
-                return batch.inputs, batch.labels
-            end,
-            -- the end callback (runs in the main thread)
-            trainBatch
-        )
-    end
-    donkeys:synchronize()]]
-
     cutorch.synchronize()
 
     lossEpoch = lossEpoch / (opt.batchSize * opt.epochSize)
@@ -179,7 +165,7 @@ function trainBatch(inputsCPU, labelsCPU)
         
         loss = contentLossModule.loss
         for _, mod in ipairs(styleLossModules) do
-          loss = loss + mod.loss
+            loss = loss + mod.loss
         end
         
         vggTotalNetwork:zeroGradParameters()

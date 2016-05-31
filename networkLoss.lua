@@ -3,7 +3,7 @@
 -- debug coonfig options
 --
 local printModel = false
-describeNets = true
+describeNets = false
 
 require 'torch'
 require 'cutorch'
@@ -22,6 +22,7 @@ paths.dofile('util.lua')
 paths.dofile('torchUtil.lua')
 paths.dofile('loadModel.lua')
 paths.dofile('imageLoader.lua')
+paths.dofile('threadPool.lua')
 
 --print(opt)
 
@@ -46,23 +47,18 @@ collectgarbage()
 print('imagelist: ', opt.imageList)
 local imageLoader = makeImageLoader()
 
---local batch = sampleBatch(imageLoader)
-
 cutorch.setDevice(opt.GPU) -- by default, use GPU 1
 torch.manualSeed(opt.manualSeed)
 
 print('Saving everything to: ' .. opt.outDir)
 os.execute('mkdir -p ' .. opt.outDir)
 
-paths.dofile('threadPool.lua')
 paths.dofile('train.lua')
---paths.dofile('test.lua')
 
 epoch = 1
 
 for i=1,opt.epochCount do
    train(imageLoader)
-   --test()
    epoch = epoch + 1
 end
 
