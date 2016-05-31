@@ -42,7 +42,20 @@ end
 
 -- Returns a network that computes the CxC Gram matrix from inputs
 -- of size C x H x W
-function GramMatrix()
+function GramMatrixSingleton()
+    local net = nn.Sequential()
+    net:add(nn.View(-1):setNumInputDims(2))
+    local concat = nn.ConcatTable()
+    concat:add(nn.Identity())
+    concat:add(nn.Identity())
+    net:add(concat)
+    net:add(nn.MM(false, true))
+    return net
+end
+
+-- Returns a network that computes the CxC Gram matrix from inputs
+-- of size B x C x H x W
+--[[function GramMatrixMinibatch()
   local net = nn.Sequential()
   net:add(nn.View(-1):setNumInputDims(2))
   local concat = nn.ConcatTable()
@@ -51,43 +64,65 @@ function GramMatrix()
   net:add(concat)
   net:add(nn.MM(false, true))
   return net
-end
+end]]
 
 
 -- Define an nn Module to compute style loss in-place
 local StyleLoss, parent = torch.class('nn.StyleLoss', 'nn.Module')
 
-function StyleLoss:__init(strength, target, normalize)
-  parent.__init(self)
-  self.normalize = normalize or false
-  self.strength = strength
-  self.target = target
-  self.loss = 0
-  
-  self.gram = GramMatrix()
-  self.G = nil
-  self.crit = nn.MSECriterion()
+function StyleLoss:__init(strength, target, normalize, batchSize)
+    parent.__init(self)
+    self.normalize = normalize or false
+    self.strength = strength
+    self.target = target
+    self.loss = 0
+    self.batchSize = batchSize
+
+    self.G = {}
+    self.gram = {}
+    self.crit = {}
+    for i = 1, self.batchSize do
+        self.gram[i] = GramMatrixSingleton()
+        self.crit[i] = nn.MSECriterion()
+    end
 end
 
 function StyleLoss:updateOutput(input)
-  self.G = self.gram:forward(input)
-  self.G:div(input:nElement())
-  self.loss = self.crit:forward(self.G, self.target)
-  self.loss = self.loss * self.strength
-  self.output = input
-  return self.output
+    --print('StyleLoss:updateOutput input size: ' .. getSize(input))
+    --print('StyleLoss:updateOutput target size: ' .. getSize(self.target))
+    
+    self.loss = 0
+    for i = 1, self.batchSize do
+        --print('input[i] size: ' .. getSize(input[i]))
+        self.G[i] = self.gram[i]:forward(input[i])
+        self.G[i]:div(input[i]:nElement())
+        --print('StyleLoss:updateOutput G size: ' .. getSize(self.G[i]))
+        self.loss = self.loss + self.crit[i]:forward(self.G[i], self.target)
+    end
+    self.loss = self.loss * self.strength
+    self.output = input
+    return self.output
 end
 
 function StyleLoss:updateGradInput(input, gradOutput)
-  local dG = self.crit:backward(self.G, self.target)
-  dG:div(input:nElement())
-  self.gradInput = self.gram:backward(input, dG)
-  if self.normalize then
-    self.gradInput:div(torch.norm(self.gradInput, 1) + 1e-8)
-  end
-  self.gradInput:mul(self.strength)
-  self.gradInput:add(gradOutput)
-  return self.gradInput
+    local gradInputs = {}
+    for i = 1, self.batchSize do
+        local dG = self.crit[i]:backward(self.G[i], self.target)
+        dG:div(input[i]:nElement())
+        gradInputs[i] = self.gram[i]:backward(input[i], dG)
+    end
+    --print('grad size: ' .. getSize(gradInputs[1]))
+    local t = gradInputs[1]
+    self.gradInput = t.new(self.batchSize, t:size()[1], t:size()[2], t:size()[3])
+    for i = 1, self.batchSize do
+        self.gradInput[i] = gradInputs[i]
+    end
+    if self.normalize then
+        self.gradInput:div(torch.norm(self.gradInput, 1) + 1e-8)
+    end
+    self.gradInput:mul(self.strength)
+    self.gradInput:add(gradOutput)
+    return self.gradInput
 end
 
 

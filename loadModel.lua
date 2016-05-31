@@ -46,6 +46,11 @@ function createVGG()
     local styleImageCaffe = caffePreprocess(styleImage):float()
     --contentImageCaffe:cuda()
   
+    local styleBatch = torch.FloatTensor(opt.batchSize, 3, opt.cropSize, opt.cropSize)
+    for i = 1, opt.batchSize do
+        styleBatch[i] = styleImageCaffe:clone()
+    end
+    
     local styleLossModules = {}
     local contentLossModule = {}
     local vggIn = loadcaffe.load('models/VGG_ILSVRC_19_layers_deploy.prototxt',
@@ -54,15 +59,16 @@ function createVGG()
     local vggContentOut = nn.Sequential()
     local vggTotalOut = nn.Sequential()
     --vgg:cuda()
-    local vggDepth = 9
+    local vggDepth = 23
     local contentDepth = 9
+    
     local contentName = 'relu2_2'
     
     local styleNames = {}
-    --styleNames['relu1_2'] = true
-    --styleNames['relu2_2'] = true
-    --styleNames['relu3_3'] = true
-    --styleNames['relu4_2'] = true
+    styleNames['relu1_2'] = true
+    styleNames['relu2_2'] = true
+    styleNames['relu3_3'] = true
+    styleNames['relu4_2'] = true
     
     for i = 1, vggDepth do
         local layer = vggIn:get(i)
@@ -77,7 +83,7 @@ function createVGG()
             vggContentOut:add(layer)
             if name == contentName then
                 print("Setting up content layer" .. i .. ": " .. name)
-                local contentTarget = nil
+                local contentTarget = vggTotalOut:forward(styleBatch):clone()
                 local norm = false
                 contentLossModule = nn.ContentLoss(opt.contentWeight, contentTarget, norm):float()
                 vggTotalOut:add(contentLossModule)
@@ -86,9 +92,13 @@ function createVGG()
         
         if styleNames[name] then
             print("Setting up style layer" .. i .. ": " .. name)
-            local styleTarget = vggTotalOut:forward(styleImageCaffe):clone()
+            local gram = GramMatrixSingleton():float()
+            local styleTargetFeatures = vggTotalOut:forward(styleBatch):clone()
+            --print('style target features size: ' .. getSize(styleTargetFeatures))
+            local styleTargetGram = gram:forward(styleTargetFeatures[1]):clone()
+            styleTargetGram:div(styleTargetFeatures:nElement())
             local norm = false
-            local styleLossModule = nn.StyleLoss(opt.styleWeight, styleTarget, norm):float()
+            local styleLossModule = nn.StyleLoss(opt.styleWeight, styleTargetGram, norm, opt.batchSize):float()
             vggTotalOut:add(styleLossModule)
             styleLossModules[#styleLossModules + 1] = styleLossModule
         end
@@ -122,9 +132,9 @@ function createModel()
    
    addConvElement(transformNetwork, 128, 128, 3, 1, 1)
    addConvElement(transformNetwork, 128, 128, 3, 1, 1)
-   --[[addConvElement(transformNetwork, 128, 128, 3, 1, 1)
-   addConvElement(transformNetwork, 128, 128, 3, 1, 1)
-   addConvElement(transformNetwork, 128, 128, 3, 1, 1)]]
+   --addConvElement(transformNetwork, 128, 128, 3, 1, 1)
+   --addConvElement(transformNetwork, 128, 128, 3, 1, 1)
+   --addConvElement(transformNetwork, 128, 128, 3, 1, 1)
    
    addUpConvElement(transformNetwork, 128, 64, 3, 2, 1, 0)
    addUpConvElement(transformNetwork, 64, 32, 3, 2, 2, 1)

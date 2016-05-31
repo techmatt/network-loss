@@ -3,10 +3,21 @@ require 'math'
 require 'lfs'
 
 function getSize(tensor)
-    return '[' .. tostring(tensor:size()[1]) .. ' ' ..
-                  tostring(tensor:size()[2]) .. ' ' ..
-                  tostring(tensor:size()[3]) .. ' ' ..
-                  tostring(tensor:size()[4]) .. ']'
+    if #tensor:size() == 2 then
+        return '[' .. tostring(tensor:size()[1]) .. ' ' ..
+                      tostring(tensor:size()[2]) .. ']'
+    elseif #tensor:size() == 3 then
+        return '[' .. tostring(tensor:size()[1]) .. ' ' ..
+                      tostring(tensor:size()[2]) .. ' ' ..
+                      tostring(tensor:size()[3]) .. ']'
+    elseif #tensor:size() == 4 then
+        return '[' .. tostring(tensor:size()[1]) .. ' ' ..
+                      tostring(tensor:size()[2]) .. ' ' ..
+                      tostring(tensor:size()[3]) .. ' ' ..
+                      tostring(tensor:size()[4]) .. ']'
+    else
+        return '[unknown vector size]'
+    end
 end
 
 function describeNet(network, inputs)

@@ -135,7 +135,6 @@ local parameters, gradParameters = fullNetwork:getParameters()
 -- zeros into the top of the net on the backward pass.
 local zeroGradOutputs = nil
 
-
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, labelsCPU)
     cutorch.synchronize()
@@ -183,18 +182,6 @@ function trainBatch(inputsCPU, labelsCPU)
           loss = loss + mod.loss
         end
         
-        --outputs = transformNetwork:forward(inputs)
-        
-        if totalBatchCount == 0 then
-            --saveTensor(inputs, opt.outDir .. 'inputs.csv')
-            --saveTensor(labels, opt.outDir .. 'labels.csv')
-            --saveTensor(contentTargets, opt.outDir .. 'contentTargets.csv')
-            --saveTensor(contentOutputs, opt.outDir .. 'contentOutputs.csv')
-        end
-        
-        --err = contentCriterion:forward(contentOutputs, contentTargets)
-        --local gradOutputs = contentCriterion:backward(contentOutputs, contentTargets)
-        
         vggTotalNetwork:zeroGradParameters()
         
         return loss, gradParameters
@@ -212,24 +199,3 @@ function trainBatch(inputsCPU, labelsCPU)
     dataTimer:reset()
     totalBatchCount = totalBatchCount + 1
 end
-
---[[
-    local err, contentOutputs, contentTargets
-    feval = function(x)
-        --contentTargets = vggContentNetwork:forward(labels):clone()
-        
-        fullNetwork:zeroGradParameters()
-        contentOutputs = fullNetwork:forward(inputs)
-
-        err = contentCriterion:forward(contentOutputs, labels)
-        local gradOutputs = contentCriterion:backward(contentOutputs, labels)
-        fullNetwork:backward(inputs, gradOutputs)
-        return err, gradParameters
-        
-        --[[err = contentCriterion:forward(contentOutputs, contentTargets)
-        local gradOutputs = contentCriterion:backward(contentOutputs, contentTargets)
-        fullNetwork:backward(inputs, gradOutputs)
-        --vggContentNetwork:zeroGradParameters()
-        
-        return err, gradParameters
-    end]]

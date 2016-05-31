@@ -23,9 +23,10 @@ function M.parse(arg)
     cmd:option('-cropSize', 250, 'Height and Width of image crop to be used as input layer')
     
     cmd:option('-contentWeight', 1.0, 'TODO')
+    cmd:option('-styleWeight', 0.0, 'TODO')
+    cmd:option('-TVWeight', 1e-3, 'TODO')
     cmd:option('-contentImage', 'examples/inputs/tubingen.jpg', 'TODO')
-    cmd:option('-styleImage', 'examples/inputs/starry_night.jpg', 'TODO')
-    
+    cmd:option('-styleImage', 'examples/inputs/starry_night_square.jpg', 'TODO')
     
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')
     cmd:option('-GPU',                1, 'Default preferred GPU')

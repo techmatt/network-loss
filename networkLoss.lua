@@ -31,21 +31,14 @@ fullNetwork, transformNetwork, vggTotalNetwork, vggContentNetwork, contentLossMo
 cudnn.convert(fullNetwork, cudnn)
 cudnn.convert(vggContentNetwork, cudnn)
 
--- 2. Create Criterion
---contentCriterion = nn.MSECriterion()
-
 -- 3. Convert model to CUDA
 print('==> Converting model to CUDA')
 fullNetwork = fullNetwork:cuda()
 vggContentNetwork = vggContentNetwork:cuda()
---contentCriterion:cuda()
 
 if printModel then
     print('=> Model')
     print(fullNetwork)
-
-    --print('=> Criterion')
-    --print(contentCriterion)
 end
 
 collectgarbage()
