@@ -3,7 +3,9 @@ require 'math'
 require 'lfs'
 
 function getSize(tensor)
-    if #tensor:size() == 2 then
+    if not tensor or not tensor.size then
+        return '[nil]'
+    elseif #tensor:size() == 2 then
         return '[' .. tostring(tensor:size()[1]) .. ' ' ..
                       tostring(tensor:size()[2]) .. ']'
     elseif #tensor:size() == 3 then
@@ -22,14 +24,15 @@ end
 
 function describeNet(network, inputs)
     print('dumping network, input size: ' .. getSize(inputs))
-    local subnet = nn.Sequential()
+    network:forward(inputs)
+    --local subnet = nn.Sequential()
     for i, module in ipairs(network:listModules()) do
         local moduleType = torch.type(module)
         --print('module ' .. i .. ': ' .. moduleType)
-        if tostring(moduleType) ~= 'nn.Sequential' then
-            subnet:add(module)
-            local outputs = subnet:forward(inputs)
-            print('module ' .. i .. ': ' .. getSize(outputs) .. ': ' .. tostring(module))
+        if tostring(moduleType) ~= 'nn.Sequential' and
+           tostring(moduleType) ~= 'nn.ConcatTable' then
+        --    subnet:add(module)
+            print('module ' .. i .. ': ' .. getSize(module.output) .. ': ' .. tostring(module))
         end
     end
 end

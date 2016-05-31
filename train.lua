@@ -35,10 +35,10 @@ local function paramsForEpoch(epoch)
     end
     local regimes = {
         -- start, end,    LR,   WD,
-        {  1,     10,   1e-2,   5e-4, },
-        { 11,     29,   1e-5,   5e-4  },
-        { 30,     43,   1e-6,   0 },
-        { 44,     52,   5e-7,   0 },
+        {  1,     10,   1e-3,   5e-4, },
+        { 11,     29,   1e-4,   5e-4  },
+        { 30,     43,   1e-5,   0 },
+        { 44,     52,   5e-6,   0 },
         { 53,    1e8,   1e-7,   0 },
     }
 
@@ -146,9 +146,9 @@ function trainBatch(inputsCPU, labelsCPU)
     inputs:resize(inputsCPU:size()):copy(inputsCPU)
     labels:resize(labelsCPU:size()):copy(labelsCPU)
 
-    if totalBatchCount == 0 then
-        --dumpNet(fullNetwork, inputs, opt.outDir .. 'full/')
-        --dumpNet(vggContentNetwork, labels, opt.outDir .. 'content/')
+    if describeNets and totalBatchCount == 0 then
+        describeNet(fullNetwork, inputs, opt.outDir .. 'full/')
+        describeNet(vggContentNetwork, labels, opt.outDir .. 'content/')
     end
     
     if not zeroGradOutputs then

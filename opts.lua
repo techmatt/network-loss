@@ -1,11 +1,4 @@
---
---  Copyright (c) 2014, Facebook, Inc.
---  All rights reserved.
---
---  This source code is licensed under the BSD-style license found in the
---  LICENSE file in the root directory of this source tree. An additional grant
---  of patent rights can be found in the PATENTS file in the same directory.
---
+
 local M = { }
 
 function M.parse(arg)
@@ -18,12 +11,12 @@ function M.parse(arg)
     ------------ Network loss options ---------------
     cmd:option('-outDir', '/home/mdfisher/code/network-loss/out/', 'TODO')
     cmd:option('-imageList', '/home/mdfisher/code/network-loss/data/imageList.txt', 'TODO')
-    cmd:option('-batchSize', 8, 'mini-batch size (1 = pure stochastic)')
+    cmd:option('-batchSize', 4, 'mini-batch size (1 = pure stochastic)')
     cmd:option('-imageSize', 256, 'Smallest side of the resized image')
-    cmd:option('-cropSize', 250, 'Height and Width of image crop to be used as input layer')
+    cmd:option('-cropSize', 256, 'Height and Width of image crop to be used as input layer')
     
-    cmd:option('-contentWeight', 1.0, 'TODO')
-    cmd:option('-styleWeight', 0.0, 'TODO')
+    cmd:option('-contentWeight', 5.0, 'TODO')
+    cmd:option('-styleWeight', 5.0, 'TODO')
     cmd:option('-TVWeight', 1e-3, 'TODO')
     cmd:option('-contentImage', 'examples/inputs/tubingen.jpg', 'TODO')
     cmd:option('-styleImage', 'examples/inputs/starry_night_square.jpg', 'TODO')
@@ -42,7 +35,7 @@ function M.parse(arg)
     cmd:option('-weightDecay',     5e-4, 'weight decay')
     
     ------------- Data options ------------------------
-    cmd:option('-nDonkeys',        12, 'number of donkeys to initialize (data loading threads)')
+    cmd:option('-nDonkeys',        0, 'number of donkeys to initialize (data loading threads)')
     
     
     ------------ General options --------------------

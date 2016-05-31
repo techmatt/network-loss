@@ -3,6 +3,7 @@
 -- debug coonfig options
 --
 local printModel = false
+describeNets = true
 
 require 'torch'
 require 'cutorch'
