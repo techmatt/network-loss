@@ -41,43 +41,62 @@ function createVGGDebug()
 end
 
 function createVGG()
-    --local contentImage = image.load(opt.contentImage, 3)
-    --contentImage = image.scale(contentImage, opt.cropSize, 'bilinear')
-    --local contentImageCaffe = caffePreprocess(contentImage):float()
+    local styleImage = image.load(opt.styleImage, 3)
+    styleImage = image.scale(styleImage, opt.cropSize, 'bilinear')
+    local styleImageCaffe = caffePreprocess(styleImage):float()
     --contentImageCaffe:cuda()
   
     local styleLossModules = {}
+    local contentLossModule = {}
     local vggIn = loadcaffe.load('models/VGG_ILSVRC_19_layers_deploy.prototxt',
                                  'models/VGG_ILSVRC_19_layers.caffemodel', 'nn'):float()
     --vggIn:cuda()
     local vggContentOut = nn.Sequential()
+    local vggTotalOut = nn.Sequential()
     --vgg:cuda()
     local vggDepth = 9
+    local contentDepth = 9
     local contentName = 'relu2_2'
+    
+    local styleNames = {}
+    --styleNames['relu1_2'] = true
+    --styleNames['relu2_2'] = true
+    --styleNames['relu3_3'] = true
+    --styleNames['relu4_2'] = true
+    
     for i = 1, vggDepth do
         local layer = vggIn:get(i)
         local name = layer.name
         print('layer ' .. i .. '; ' .. name)
         local layerType = torch.type(layer)
-        vggContentOut:add(layer)
-        --local isPooling = (layer_type == 'cudnn.SpatialMaxPooling' or layer_type == 'nn.SpatialMaxPooling')
         
-        -- style and loss are handled very differently
-        if name == contentName then
-            print("Setting up content layer" .. i .. ": " .. name)
-            --[[
-            local target = vggOut:forward(contentImageCaffe):clone()
+        vggTotalOut:add(layer)
+        --local isPooling = (layer_type == 'cudnn.SpatialMaxPooling' or layer_type == 'nn.SpatialMaxPooling')
+
+        if i <= contentDepth then
+            vggContentOut:add(layer)
+            if name == contentName then
+                print("Setting up content layer" .. i .. ": " .. name)
+                local contentTarget = nil
+                local norm = false
+                contentLossModule = nn.ContentLoss(opt.contentWeight, contentTarget, norm):float()
+                vggTotalOut:add(contentLossModule)
+            end
+        end
+        
+        if styleNames[name] then
+            print("Setting up style layer" .. i .. ": " .. name)
+            local styleTarget = vggTotalOut:forward(styleImageCaffe):clone()
             local norm = false
-            local contentLossModule = nn.ContentLoss(opt.contentWeight, target, norm):float()
-            contentLossModule:cuda()
-            vggOut:add(contentLossModule)
-            lossModules.content[#lossModules + 1] = contentLossModule]]
+            local styleLossModule = nn.StyleLoss(opt.styleWeight, styleTarget, norm):float()
+            vggTotalOut:add(styleLossModule)
+            styleLossModules[#styleLossModules + 1] = styleLossModule
         end
     end
     
     vggIn = nil
     collectgarbage()
-    return vggContentOut, styleLossModules
+    return vggContentOut, vggTotalOut, contentLossModule, styleLossModules
 end
 
 function createModel()
@@ -112,11 +131,10 @@ function createModel()
    
    transformNetwork:add(nn.SpatialConvolution(32,3,3,3,1,1,0,0))
    
-   local vggContentNetwork, styleLossModules = createVGG()
-   --local vggContentNetwork, styleLossModules = createVGGDebug()
+   local vggContentNetwork, vggTotalNetwork, contentLossModule, styleLossModules = createVGG()
    
    fullNetwork:add(transformNetwork)
-   fullNetwork:add(vggContentNetwork)
+   fullNetwork:add(vggTotalNetwork)
    
-   return fullNetwork, transformNetwork, vggContentNetwork, styleLossModules
+   return fullNetwork, transformNetwork, vggTotalNetwork, vggContentNetwork, contentLossModule, styleLossModules
 end

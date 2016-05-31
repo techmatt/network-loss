@@ -24,6 +24,7 @@ function M.parse(arg)
     
     cmd:option('-contentWeight', 1.0, 'TODO')
     cmd:option('-contentImage', 'examples/inputs/tubingen.jpg', 'TODO')
+    cmd:option('-styleImage', 'examples/inputs/starry_night.jpg', 'TODO')
     
     
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')

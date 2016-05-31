@@ -27,27 +27,25 @@ paths.dofile('imageLoader.lua')
 --local allImages = getFileListRecursive('/home/mdfisher/ssd2/ImageNet/CLS-LOC/train/')
 --writeAllLines(opt.imageList, stuff)
 
-fullNetwork, transformNetwork, vggContentNetwork, styleLossModules = createModel()
+fullNetwork, transformNetwork, vggTotalNetwork, vggContentNetwork, contentLossModule, styleLossModules = createModel()
 cudnn.convert(fullNetwork, cudnn)
-cudnn.convert(transformNetwork, cudnn)
 cudnn.convert(vggContentNetwork, cudnn)
 
 -- 2. Create Criterion
-contentCriterion = nn.MSECriterion()
+--contentCriterion = nn.MSECriterion()
 
 -- 3. Convert model to CUDA
 print('==> Converting model to CUDA')
 fullNetwork = fullNetwork:cuda()
-transformNetwork = transformNetwork:cuda()
 vggContentNetwork = vggContentNetwork:cuda()
-contentCriterion:cuda()
+--contentCriterion:cuda()
 
 if printModel then
     print('=> Model')
     print(fullNetwork)
 
-    print('=> Criterion')
-    print(contentCriterion)
+    --print('=> Criterion')
+    --print(contentCriterion)
 end
 
 collectgarbage()

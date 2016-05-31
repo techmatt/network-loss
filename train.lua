@@ -130,6 +130,12 @@ local dataTimer = torch.Timer()
 
 local parameters, gradParameters = fullNetwork:getParameters()
 
+-- Run it through the network once to get the proper size for the gradient
+-- All the gradients will come from the extra loss modules, so we just pass
+-- zeros into the top of the net on the backward pass.
+local zeroGradOutputs = nil
+
+
 -- 4. trainBatch - Used by train() to train a single batch after the data is loaded.
 function trainBatch(inputsCPU, labelsCPU)
     cutorch.synchronize()
@@ -145,10 +151,16 @@ function trainBatch(inputsCPU, labelsCPU)
         --dumpNet(fullNetwork, inputs, opt.outDir .. 'full/')
         --dumpNet(vggContentNetwork, labels, opt.outDir .. 'content/')
     end
+    
+    if not zeroGradOutputs then
+        local output = fullNetwork:forward(labels)
+        zeroGradOutputs = labels.new(#output):zero()
+    end
         
-    local err, contentOutputs, contentTargets
+    local loss, contentOutputs, contentTargets
     feval = function(x)
         contentTargets = vggContentNetwork:forward(labels):clone()
+        contentLossModule.target = contentTargets
         
         if totalBatchCount % 100 == 0 then
             local inClone = inputs[1]:clone()
@@ -163,7 +175,13 @@ function trainBatch(inputsCPU, labelsCPU)
         end
         
         fullNetwork:zeroGradParameters()
-        contentOutputs = fullNetwork:forward(inputs)
+        fullNetwork:forward(inputs)
+        fullNetwork:backward(inputs, zeroGradOutputs)
+        
+        loss = contentLossModule.loss
+        for _, mod in ipairs(styleLossModules) do
+          loss = loss + mod.loss
+        end
         
         --outputs = transformNetwork:forward(inputs)
         
@@ -174,22 +192,21 @@ function trainBatch(inputsCPU, labelsCPU)
             --saveTensor(contentOutputs, opt.outDir .. 'contentOutputs.csv')
         end
         
-        err = contentCriterion:forward(contentOutputs, contentTargets)
-        local gradOutputs = contentCriterion:backward(contentOutputs, contentTargets)
-        fullNetwork:backward(inputs, gradOutputs)
-        vggContentNetwork:zeroGradParameters()
+        --err = contentCriterion:forward(contentOutputs, contentTargets)
+        --local gradOutputs = contentCriterion:backward(contentOutputs, contentTargets)
         
-        return err, gradParameters
+        vggTotalNetwork:zeroGradParameters()
+        
+        return loss, gradParameters
     end
     optim.adam(feval, parameters, optimState)
 
     cutorch.synchronize()
     batchNumber = batchNumber + 1
-    lossEpoch = lossEpoch + err
+    lossEpoch = lossEpoch + loss
 
-    -- Calculate top-1 error, and print information
     print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f LR %.0e DataLoadingTime %.3f'):format(
-        epoch, batchNumber, opt.epochSize, timer:time().real, err,
+        epoch, batchNumber, opt.epochSize, timer:time().real, loss,
         optimState.learningRate, dataLoadingTime))
 
     dataTimer:reset()
