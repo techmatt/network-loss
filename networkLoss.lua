@@ -20,16 +20,18 @@ opt = opts.parse(arg)
 
 paths.dofile('util.lua')
 paths.dofile('torchUtil.lua')
+
+--local allImages = getFileListRecursive('/home/mdfisher/ssd2/ImageNet/CLS-LOC/train/')
+local allImages = getFileListRecursive('/home/mdfisher/ssd2/COCO/train2014/')
+writeAllLines(opt.imageList, allImages)
+
 paths.dofile('loadModel.lua')
 paths.dofile('imageLoader.lua')
 paths.dofile('threadPool.lua')
 
 --print(opt)
 
---local allImages = getFileListRecursive('/home/mdfisher/ssd2/ImageNet/CLS-LOC/train/')
---writeAllLines(opt.imageList, stuff)
-
-fullNetwork, transformNetwork, vggTotalNetwork, vggContentNetwork, contentLossModule, styleLossModules = createModel()
+fullNetwork, transformNetwork, vggTotalNetwork, vggContentNetwork, TVLossModule, contentLossModule, styleLossModules = createModel()
 cudnn.convert(fullNetwork, cudnn)
 cudnn.convert(vggContentNetwork, cudnn)
 

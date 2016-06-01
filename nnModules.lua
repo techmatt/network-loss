@@ -128,40 +128,43 @@ end
 
 -- TV loss backward pass inspired by kaishengtai/neuralart
 function TVLoss:updateGradInput(input, gradOutput)
-  self.gradInput:resizeAs(input):zero()
-  local C, H, W = input:size(1), input:size(2), input:size(3)
-  self.x_diff:resize(3, H - 1, W - 1)
-  self.y_diff:resize(3, H - 1, W - 1)
-  self.x_diff:copy(input[{{}, {1, -2}, {1, -2}}])
-  self.x_diff:add(-1, input[{{}, {1, -2}, {2, -1}}])
-  self.y_diff:copy(input[{{}, {1, -2}, {1, -2}}])
-  self.y_diff:add(-1, input[{{}, {2, -1}, {1, -2}}])
-  self.gradInput[{{}, {1, -2}, {1, -2}}]:add(self.x_diff):add(self.y_diff)
-  self.gradInput[{{}, {1, -2}, {2, -1}}]:add(-1, self.x_diff)
-  self.gradInput[{{}, {2, -1}, {1, -2}}]:add(-1, self.y_diff)
-  self.gradInput:mul(self.strength)
-  self.gradInput:add(gradOutput)
-  return self.gradInput
+    self.gradInput:resizeAs(input):zero()
+    local B, C, H, W = input:size(1), input:size(2), input:size(3), input:size(4)
+    self.x_diff:resize(B, 3, H - 1, W - 1)
+    self.y_diff:resize(B, 3, H - 1, W - 1)
+    
+    for b = 1, B do
+        self.x_diff[b]:copy(input[b][{{}, {1, -2}, {1, -2}}])
+        self.x_diff[b]:add(-1, input[b][{{}, {1, -2}, {2, -1}}])
+        self.y_diff[b]:copy(input[b][{{}, {1, -2}, {1, -2}}])
+        self.y_diff[b]:add(-1, input[b][{{}, {2, -1}, {1, -2}}])
+        self.gradInput[b][{{}, {1, -2}, {1, -2}}]:add(self.x_diff[b]):add(self.y_diff[b])
+        self.gradInput[b][{{}, {1, -2}, {2, -1}}]:add(-1, self.x_diff[b])
+        self.gradInput[b][{{}, {2, -1}, {1, -2}}]:add(-1, self.y_diff[b])
+    end
+    self.gradInput:mul(self.strength)
+    self.gradInput:add(gradOutput)
+    return self.gradInput
 end
 
 -- Preprocess an image before passing it to a Caffe model.
 -- We need to rescale from [0, 1] to [0, 255], convert from RGB to BGR,
 -- and subtract the mean pixel.
 function caffePreprocess(img)
-  local mean_pixel = torch.FloatTensor({103.939, 116.779, 123.68})
-  local perm = torch.LongTensor{3, 2, 1}
-  img = img:index(1, perm):mul(256.0)
-  mean_pixel = mean_pixel:view(3, 1, 1):expandAs(img)
-  img:add(-1, mean_pixel)
-  return img
+    local mean_pixel = torch.FloatTensor({103.939, 116.779, 123.68})
+    local perm = torch.LongTensor{3, 2, 1}
+    img = img:index(1, perm):mul(256.0)
+    mean_pixel = mean_pixel:view(3, 1, 1):expandAs(img)
+    img:add(-1, mean_pixel)
+    return img
 end
 
 -- Undo the above preprocessing.
 function caffeDeprocess(img)
-  local mean_pixel = torch.CudaTensor({103.939, 116.779, 123.68})
-  mean_pixel = mean_pixel:view(3, 1, 1):expandAs(img)
-  img = img + mean_pixel
-  local perm = torch.LongTensor{3, 2, 1}
-  img = img:index(1, perm):div(256.0)
-  return img
+    local mean_pixel = torch.CudaTensor({103.939, 116.779, 123.68})
+    mean_pixel = mean_pixel:view(3, 1, 1):expandAs(img)
+    img = img + mean_pixel
+    local perm = torch.LongTensor{3, 2, 1}
+    img = img:index(1, perm):div(256.0)
+    return img
 end

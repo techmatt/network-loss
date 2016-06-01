@@ -10,7 +10,7 @@ function M.parse(arg)
     
     ------------ Network loss options ---------------
     cmd:option('-outDir', '/home/mdfisher/code/network-loss/out/', 'TODO')
-    cmd:option('-imageList', '/home/mdfisher/code/network-loss/data/imageList.txt', 'TODO')
+    cmd:option('-imageList', '/home/mdfisher/code/network-loss/data/imageListCOCO.txt', 'TODO')
     cmd:option('-batchSize', 4, 'mini-batch size (1 = pure stochastic)')
     cmd:option('-imageSize', 256, 'Smallest side of the resized image')
     cmd:option('-cropSize', 256, 'Height and Width of image crop to be used as input layer')
@@ -18,8 +18,7 @@ function M.parse(arg)
     cmd:option('-contentWeight', 5.0, 'TODO')
     cmd:option('-styleWeight', 2.0, 'TODO')
     cmd:option('-TVWeight', 1e-3, 'TODO')
-    cmd:option('-contentImage', 'examples/inputs/tubingen.jpg', 'TODO')
-    cmd:option('-styleImage', 'examples/inputs/starry_night.jpg', 'TODO')
+    cmd:option('-styleImage', 'examples/inputs/wave_crop.jpg', 'TODO')
     
     cmd:option('-manualSeed',         2, 'Manually set RNG seed')
     cmd:option('-GPU',                1, 'Default preferred GPU')
@@ -32,7 +31,7 @@ function M.parse(arg)
     ---------- Optimization options ----------------------
     cmd:option('-LR',    0.0, 'learning rate; if set, overrides default LR/WD recipe')
     cmd:option('-momentum',        0.9,  'momentum')
-    cmd:option('-weightDecay',     5e-4, 'weight decay')
+    cmd:option('-weightDecay',     0.0, 'weight decay')
     
     ------------- Data options ------------------------
     cmd:option('-nDonkeys',        8, 'number of donkeys to initialize (data loading threads)')

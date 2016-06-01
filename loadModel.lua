@@ -60,7 +60,7 @@ function createVGG()
     local vggContentOut = nn.Sequential()
     local vggTotalOut = nn.Sequential()
 
-    local vggDepth = 23
+    local vggDepth = 25
     local contentDepth = 9
     
     local contentName = 'relu2_2'
@@ -69,7 +69,7 @@ function createVGG()
     styleNames['relu1_2'] = true
     styleNames['relu2_2'] = true
     styleNames['relu3_3'] = true
-    styleNames['relu4_2'] = true
+    styleNames['relu4_3'] = true
     
     for i = 1, vggDepth do
         local layer = vggIn:get(i)
@@ -131,15 +131,17 @@ function createModel()
     transformNetwork:add(nn.SpatialConvolution(32,3,3,3,1,1,1,1))
 
     local vggContentNetwork, vggTotalNetwork, contentLossModule, styleLossModules = createVGG()
-
-    --[[if opt.TVWeight > 0 then
+    
+    fullNetwork:add(transformNetwork)
+    
+    if opt.TVWeight > 0 then
+        print('adding TV loss')
         local tvModule = nn.TVLoss(opt.TVWeight):float()
         tvModule:cuda()
         fullNetwork:add(tvModule)
-    end]]
+    end
     
-    fullNetwork:add(transformNetwork)
     fullNetwork:add(vggTotalNetwork)
 
-    return fullNetwork, transformNetwork, vggTotalNetwork, vggContentNetwork, contentLossModule, styleLossModules
+    return fullNetwork, transformNetwork, vggTotalNetwork, vggContentNetwork, TVLossModule, contentLossModule, styleLossModules
 end

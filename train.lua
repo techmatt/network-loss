@@ -35,11 +35,11 @@ local function paramsForEpoch(epoch)
     end
     local regimes = {
         -- start, end,    LR,   WD,
-        {  1,     10,   1e-3,   5e-4, },
-        { 11,     29,   1e-4,   5e-4  },
-        { 30,     43,   1e-5,   0 },
-        { 44,     52,   5e-6,   0 },
-        { 53,    1e8,   1e-7,   0 },
+        {  1,     20,   1e-3,   0, }, --5e-4
+        { 21,     29,   5e-4,   0  },
+        { 30,     43,   2e-4,   0 },
+        { 44,     52,   5e-5,   0 },
+        { 53,    1e8,   1e-5,   0 },
     }
 
     for _, row in ipairs(regimes) do
@@ -53,7 +53,6 @@ end
 trainLogger = optim.Logger(paths.concat(opt.outDir, 'train.log'))
 local batchNumber
 local totalBatchCount = 0
-local top1_epoch, loss_epoch
 
 -- 3. train - this function handles the high-level training loop,
 --            i.e. load data, train model, save model and state to disk
