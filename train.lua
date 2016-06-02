@@ -11,11 +11,7 @@ require 'optim'
 
 -- Setup a reused optimization state (for sgd). If needed, reload it from disk
 local optimState = {
-    learningRate = opt.LR,
-    learningRateDecay = 0.0,
-    momentum = opt.momentum,
-    dampening = 0.0,
-    weightDecay = opt.weightDecay
+    learningRate = opt.LR
 }
 
 -- Learning rate annealing schedule. We will build a new optimizer for
@@ -64,9 +60,6 @@ function train(imageLoader)
     if newRegime then
         optimState = {
         learningRate = params.learningRate,
-        learningRateDecay = 0.0,
-        momentum = opt.momentum,
-        dampening = 0.0,
         weightDecay = params.weightDecay
         }
     end
@@ -140,8 +133,8 @@ function trainBatch(inputsCPU, labelsCPU)
         local output = fullNetwork:forward(labels)
         zeroGradOutputs = labels.new(#output):zero()
     end
-        
-    local loss, contentOutputs, contentTargets
+
+    local loss, contentTargets
     feval = function(x)
         contentTargets = vggContentNetwork:forward(labels):clone()
         contentLossModule.target = contentTargets
@@ -152,7 +145,6 @@ function trainBatch(inputsCPU, labelsCPU)
             
             local outClone = transformNetwork:forward(inputs)[1]:clone()
             outClone = caffeDeprocess(outClone)
-            --outClone:add(0.5)
             
             image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_in.png', inClone)
             image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_out.png', outClone)
@@ -163,8 +155,14 @@ function trainBatch(inputsCPU, labelsCPU)
         fullNetwork:backward(inputs, zeroGradOutputs)
         
         loss = contentLossModule.loss
-        for _, mod in ipairs(styleLossModules) do
+        for i, mod in ipairs(styleLossModules) do
             loss = loss + mod.loss
+            
+            if totalBatchCount % 1000 == 0 then
+                for b = 1, opt.batchSize do
+                    --saveTensor(mod.G[b], opt.outDir .. 'sample' .. totalBatchCount .. '_style' .. i .. '_b' .. b .. '.txt')
+                end
+            end
         end
         
         vggTotalNetwork:zeroGradParameters()
@@ -180,6 +178,11 @@ function trainBatch(inputsCPU, labelsCPU)
     print(('Epoch: [%d][%d/%d]\tTime %.3f Err %.4f LR %.0e DataLoadingTime %.3f'):format(
         epoch, batchNumber, opt.epochSize, timer:time().real, loss,
         optimState.learningRate, dataLoadingTime))
+        
+    print(string.format('  Content loss: %f', contentLossModule.loss))
+    for i, mod in ipairs(styleLossModules) do
+        print(string.format('  Style %d loss: %f', i, mod.loss))
+    end
 
     dataTimer:reset()
     totalBatchCount = totalBatchCount + 1

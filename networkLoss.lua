@@ -3,7 +3,7 @@
 -- debug coonfig options
 --
 local printModel = false
-describeNets = false
+describeNets = true
 
 require 'torch'
 require 'cutorch'
@@ -11,6 +11,7 @@ require 'paths'
 require 'xlua'
 require 'optim'
 require 'nn'
+require 'image'
 
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -21,9 +22,13 @@ opt = opts.parse(arg)
 paths.dofile('util.lua')
 paths.dofile('torchUtil.lua')
 
+--local testImg = image.load(opt.styleImage)
+--local paddedImg = reflectionPadImage(testImg, 100)
+--image.save(opt.outDir .. 'padded.png', paddedImg)
+
 --local allImages = getFileListRecursive('/home/mdfisher/ssd2/ImageNet/CLS-LOC/train/')
-local allImages = getFileListRecursive('/home/mdfisher/ssd2/COCO/train2014/')
-writeAllLines(opt.imageList, allImages)
+--local allImages = getFileListRecursive('/home/mdfisher/ssd2/COCO/train2014/')
+--writeAllLines(opt.imageList, allImages)
 
 paths.dofile('loadModel.lua')
 paths.dofile('imageLoader.lua')

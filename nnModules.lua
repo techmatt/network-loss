@@ -92,33 +92,35 @@ end
 
 function StyleLoss:updateGradInput(input, gradOutput)
     local gradInputs = {}
+    local dG = {}
     for i = 1, self.batchSize do
-        local dG = self.crit[i]:backward(self.G[i], self.target)
-        dG:div(input[i]:nElement())
-        gradInputs[i] = self.gram[i]:backward(input[i], dG)
+        dG[i] = self.crit[i]:backward(self.G[i], self.target)
+        dG[i]:div(input[i]:nElement())
+        gradInputs[i] = self.gram[i]:backward(input[i], dG[i])
     end
     --print('grad size: ' .. getSize(gradInputs[1]))
     local t = gradInputs[1]
     self.gradInput = t.new(self.batchSize, t:size()[1], t:size()[2], t:size()[3])
     for i = 1, self.batchSize do
-        self.gradInput[i] = gradInputs[i]
-    end
-    if self.normalize then
-        self.gradInput:div(torch.norm(self.gradInput, 1) + 1e-8)
+        --TODO should I copy here instead?
+        self.gradInput[i] = gradInputs[i]:clone()
     end
     self.gradInput:mul(self.strength)
     self.gradInput:add(gradOutput)
     return self.gradInput
 end
 
-
 local TVLoss, parent = torch.class('nn.TVLoss', 'nn.Module')
 
-function TVLoss:__init(strength)
-  parent.__init(self)
-  self.strength = strength
-  self.x_diff = torch.Tensor()
-  self.y_diff = torch.Tensor()
+function TVLoss:__init(strength, batchSize)
+    parent.__init(self)
+    self.strength = strength
+    self.x_diff = {}
+    self.y_diff = {}
+    for b = 1, batchSize do
+        self.x_diff[b] = torch.Tensor()
+        self.y_diff[b] = torch.Tensor()
+    end
 end
 
 function TVLoss:updateOutput(input)
@@ -130,10 +132,10 @@ end
 function TVLoss:updateGradInput(input, gradOutput)
     self.gradInput:resizeAs(input):zero()
     local B, C, H, W = input:size(1), input:size(2), input:size(3), input:size(4)
-    self.x_diff:resize(B, 3, H - 1, W - 1)
-    self.y_diff:resize(B, 3, H - 1, W - 1)
     
     for b = 1, B do
+        self.x_diff[b]:resize(3, H - 1, W - 1)
+        self.y_diff[b]:resize(3, H - 1, W - 1)
         self.x_diff[b]:copy(input[b][{{}, {1, -2}, {1, -2}}])
         self.x_diff[b]:add(-1, input[b][{{}, {1, -2}, {2, -1}}])
         self.y_diff[b]:copy(input[b][{{}, {1, -2}, {1, -2}}])

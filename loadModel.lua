@@ -14,7 +14,9 @@ function addConvElement(network,iChannels,oChannels,size,stride,padding)
 end
 
 function addUpConvElement(network,iChannels,oChannels,size,stride,padding,extra)
-    network:add(nn.SpatialFullConvolution(iChannels,oChannels,size,size,stride,stride,padding,padding,extra,extra))
+    --network:add(nn.SpatialFullConvolution(iChannels,oChannels,size,size,stride,stride,padding,padding,extra,extra))
+    network:add(nn.SpatialUpSamplingNearest(stride))
+    network:add(nn.SpatialConvolution(iChannels,oChannels,size,size,1,1,padding,padding))
     network:add(cudnn.SpatialBatchNormalization(oChannels,1e-3))
     network:add(nn.ReLU(true))
 end
@@ -65,11 +67,11 @@ function createVGG()
     
     local contentName = 'relu2_2'
     
-    local styleNames = {}
-    styleNames['relu1_2'] = true
-    styleNames['relu2_2'] = true
-    styleNames['relu3_3'] = true
-    styleNames['relu4_3'] = true
+    local styleWeights = {}
+    styleWeights['relu1_2'] = 0.5
+    styleWeights['relu2_2'] = 0.5
+    styleWeights['relu3_3'] = 0.25
+    styleWeights['relu4_3'] = 2.0
     
     for i = 1, vggDepth do
         local layer = vggIn:get(i)
@@ -91,16 +93,17 @@ function createVGG()
             end
         end
         
-        if styleNames[name] then
+        if styleWeights[name] then
             print("Setting up style layer" .. i .. ": " .. name)
             local gram = GramMatrixSingleton():float()
             local styleTargetFeatures = vggTotalOut:forward(styleBatch):clone()
             local styleTargetGram = gram:forward(styleTargetFeatures[1]):clone()
             styleTargetGram:div(styleTargetFeatures[1]:nElement())
             local norm = false
-            local styleLossModule = nn.StyleLoss(opt.styleWeight, styleTargetGram, norm, opt.batchSize):float()
+            local styleLossModule = nn.StyleLoss(opt.styleWeight * styleWeights[name], styleTargetGram, norm, opt.batchSize):float()
             vggTotalOut:add(styleLossModule)
             styleLossModules[#styleLossModules + 1] = styleLossModule
+            saveTensor(styleTargetGram, opt.outDir .. 'styleTargetGram_' .. name .. '.txt')
         end
     end
     
@@ -128,7 +131,7 @@ function createModel()
     addUpConvElement(transformNetwork, 128, 64, 3, 2, 1, 1)
     addUpConvElement(transformNetwork, 64, 32, 3, 2, 1, 1)
 
-    transformNetwork:add(nn.SpatialConvolution(32,3,3,3,1,1,1,1))
+    transformNetwork:add(nn.SpatialConvolution(32, 3, 3, 3, 1, 1, 1, 1))
 
     local vggContentNetwork, vggTotalNetwork, contentLossModule, styleLossModules = createVGG()
     
@@ -136,7 +139,7 @@ function createModel()
     
     if opt.TVWeight > 0 then
         print('adding TV loss')
-        local tvModule = nn.TVLoss(opt.TVWeight):float()
+        local tvModule = nn.TVLoss(opt.TVWeight, opt.batchSize):float()
         tvModule:cuda()
         fullNetwork:add(tvModule)
     end
