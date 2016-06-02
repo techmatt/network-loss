@@ -4,6 +4,7 @@
 --
 local printModel = false
 describeNets = true
+useResidualBlock = false
 
 require 'torch'
 require 'cutorch'

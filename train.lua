@@ -130,8 +130,8 @@ function trainBatch(inputsCPU, labelsCPU)
     end
     
     if not zeroGradOutputs then
-        local output = fullNetwork:forward(labels)
-        zeroGradOutputs = labels.new(#output):zero()
+        local output = fullNetwork:forward(inputs)
+        zeroGradOutputs = inputs.new(#output):zero()
     end
 
     local loss, contentTargets
@@ -140,8 +140,9 @@ function trainBatch(inputsCPU, labelsCPU)
         contentLossModule.target = contentTargets
         
         if totalBatchCount % 100 == 0 then
-            local inClone = inputs[1]:clone()
-            inClone:add(0.5)
+            local inClone = labels[1]:clone()
+            --inClone:add(0.5)
+            inClone = caffeDeprocess(inClone)
             
             local outClone = transformNetwork:forward(inputs)[1]:clone()
             outClone = caffeDeprocess(outClone)

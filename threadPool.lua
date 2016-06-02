@@ -14,6 +14,7 @@ do -- start K datathreads (donkeys)
             function()
                 require 'torch'
                 require 'image'
+                require 'torchUtil'
                 require 'nnModules'
             end,
             function(idx)

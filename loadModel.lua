@@ -26,20 +26,26 @@ function addResidualBlock(network,iChannels,oChannels,size,stride,padding)
     --addConvElement(network,iChannels,oChannels,size,stride,padding)
 
     local s = nn.Sequential()
-    
+        
     s:add(nn.SpatialConvolution(iChannels,oChannels,size,size,stride,stride,padding,padding))
     s:add(cudnn.SpatialBatchNormalization(oChannels,1e-3))
     s:add(nn.ReLU(true))
     s:add(nn.SpatialConvolution(iChannels,oChannels,size,size,stride,stride,padding,padding))
     s:add(cudnn.SpatialBatchNormalization(oChannels,1e-3))
     
-    local block = nn.Sequential()
-        :add(nn.ConcatTable()
-        :add(s)
-        :add(nn.Identity()))
-        :add(nn.CAddTable(true))
-    
-    network:add(block)
+    if useResidualBlock then
+        --local shortcut = nn.narrow(3, )
+        
+        local block = nn.Sequential()
+            :add(nn.ConcatTable()
+            :add(s)
+            :add(nn.Identity()))
+            :add(nn.CAddTable(true))
+        network:add(block)
+    else
+        s:add(nn.ReLU(true))
+        network:add(s)
+    end
 end
 
 function createVGG()
@@ -115,23 +121,24 @@ end
 function createModel()
     print('Creating model')
    
+    local r = {}
     local transformNetwork = nn.Sequential()
     local fullNetwork = nn.Sequential()
    
-    addConvElement(transformNetwork, 3, 32, 9, 1, 4)
-    addConvElement(transformNetwork, 32, 64, 3, 2, 1)
-    addConvElement(transformNetwork, 64, 128, 3, 2, 1)
+    addConvElement(transformNetwork, 3, 32, 9, 1, 0)
+    addConvElement(transformNetwork, 32, 64, 3, 2, 0)
+    addConvElement(transformNetwork, 64, 128, 3, 2, 0)
 
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 1)
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 1)
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 1)
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 1)
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 1)
+    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
+    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
+    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
+    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
+    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
 
-    addUpConvElement(transformNetwork, 128, 64, 3, 2, 1, 1)
-    addUpConvElement(transformNetwork, 64, 32, 3, 2, 1, 1)
+    addUpConvElement(transformNetwork, 128, 64, 3, 2, 0, 0)
+    addUpConvElement(transformNetwork, 64, 32, 3, 2, 0, 0)
 
-    transformNetwork:add(nn.SpatialConvolution(32, 3, 3, 3, 1, 1, 1, 1))
+    transformNetwork:add(nn.SpatialConvolution(32, 3, 3, 3, 1, 1, 0, 0))
 
     local vggContentNetwork, vggTotalNetwork, contentLossModule, styleLossModules = createVGG()
     
