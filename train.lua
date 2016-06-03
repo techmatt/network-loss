@@ -11,7 +11,7 @@ require 'optim'
 
 -- Setup a reused optimization state (for adam/sgd).
 local optimState = {
-    learningRate = opt.LR
+    learningRate = 0.0
 }
 
 -- Learning rate annealing schedule. We will build a new optimizer for
@@ -26,13 +26,10 @@ local optimState = {
 --    diff to apply to optimState,
 --    true IFF this is the first epoch of a new regime
 local function paramsForEpoch(epoch)
-    if opt.LR ~= 0.0 then -- if manually specified
-        return { }
-    end
     local regimes = {
         -- start, end,    LR,   WD,
-        {  1,     20,   1e-3,   0, }, --5e-4
-        { 21,     29,   5e-4,   0  },
+        {  1,     20,   1e-3,   0 }, --5e-4
+        { 21,     29,   5e-4,   0 },
         { 30,     43,   2e-4,   0 },
         { 44,     52,   5e-5,   0 },
         { 53,    1e8,   1e-5,   0 },

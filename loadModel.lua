@@ -109,7 +109,7 @@ function createVGG()
             local styleLossModule = nn.StyleLoss(opt.styleWeight * styleWeights[name], styleTargetGram, norm, opt.batchSize):float()
             vggTotalOut:add(styleLossModule)
             styleLossModules[#styleLossModules + 1] = styleLossModule
-            saveTensor(styleTargetGram, opt.outDir .. 'styleTargetGram_' .. name .. '.txt')
+            --saveTensor(styleTargetGram, opt.outDir .. 'styleTargetGram_' .. name .. '.txt')
         end
     end
     

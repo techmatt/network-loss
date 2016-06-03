@@ -3,7 +3,7 @@
 -- debug coonfig options
 --
 local printModel = false
-describeNets = true
+describeNets = false
 useResidualBlock = false
 
 require 'torch'
@@ -13,6 +13,7 @@ require 'xlua'
 require 'optim'
 require 'nn'
 require 'image'
+require 'lfs'
 
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -31,8 +32,8 @@ paths.dofile('torchUtil.lua')
 --local allImages = getFileListRecursive('/home/mdfisher/ssd2/COCO/train2014/')
 --writeAllLines(opt.imageList, allImages)
 
-paths.dofile('movieProcessor.lua')
-transformImageDirectory(opt.outDir .. 'models/transform.t7', 'data/Sintel/framesIn/', opt.outDir .. 'movieOut256/', 267, 62, 360, 360, 256, 256)
+--paths.dofile('movieProcessor.lua')
+--transformImageDirectory(opt.outDir .. 'models/transform.t7', 'data/Sintel/framesIn/', opt.outDir .. 'movieOut256/', 267, 62, 360, 360, 256, 256)
 
 paths.dofile('loadModel.lua')
 paths.dofile('imageLoader.lua')
@@ -62,7 +63,9 @@ cutorch.setDevice(opt.GPU) -- by default, use GPU 1
 torch.manualSeed(opt.manualSeed)
 
 print('Saving everything to: ' .. opt.outDir)
-os.execute('mkdir -p ' .. opt.outDir)
+lfs.mkdir(opt.outDir)
+lfs.mkdir(opt.outDir .. 'models/')
+lfs.mkdir(opt.outDir .. 'samples/')
 
 paths.dofile('train.lua')
 
