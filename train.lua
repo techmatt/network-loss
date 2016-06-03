@@ -9,7 +9,7 @@ require 'optim'
    4. trainBatch - Used by train() to train a single batch after the data is loaded.
 ]]--
 
--- Setup a reused optimization state (for sgd). If needed, reload it from disk
+-- Setup a reused optimization state (for adam/sgd).
 local optimState = {
     learningRate = opt.LR
 }
@@ -94,8 +94,9 @@ function train(imageLoader)
 
     -- clear the intermediate states in the model before saving to disk
     -- this saves lots of disk space
-    --model:clearState()
-    --torch.save(paths.concat(opt.save, 'optimState_' .. epoch .. '.t7'), optimState)
+    transformNetwork:clearState()
+    
+    torch.save(opt.outDir .. 'models/transform' .. epoch .. '.t7', transformNetwork)
 end
 
 -------------------------------------------------------------------------------------------
@@ -147,8 +148,8 @@ function trainBatch(inputsCPU, labelsCPU)
             local outClone = transformNetwork:forward(inputs)[1]:clone()
             outClone = caffeDeprocess(outClone)
             
-            image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_in.png', inClone)
-            image.save(opt.outDir .. 'sample' .. totalBatchCount .. '_out.png', outClone)
+            image.save(opt.outDir .. 'samples/sample' .. totalBatchCount .. '_in.png', inClone)
+            image.save(opt.outDir .. 'samples/sample' .. totalBatchCount .. '_out.png', outClone)
         end
         
         fullNetwork:zeroGradParameters()

@@ -31,6 +31,9 @@ paths.dofile('torchUtil.lua')
 --local allImages = getFileListRecursive('/home/mdfisher/ssd2/COCO/train2014/')
 --writeAllLines(opt.imageList, allImages)
 
+paths.dofile('movieProcessor.lua')
+transformImageDirectory(opt.outDir .. 'models/transform.t7', 'data/Sintel/framesIn/', opt.outDir .. 'movieOut256/', 267, 62, 360, 360, 256, 256)
+
 paths.dofile('loadModel.lua')
 paths.dofile('imageLoader.lua')
 paths.dofile('threadPool.lua')
