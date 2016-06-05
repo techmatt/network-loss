@@ -5,7 +5,7 @@ require 'cudnn'
 require 'optim'
 require 'loadcaffe'
 
-paths.dofile('nnModules.lua')
+--paths.dofile('nnModules.lua')
 
 function addConvElement(network,iChannels,oChannels,size,stride,padding)
     network:add(nn.SpatialConvolution(iChannels,oChannels,size,size,stride,stride,padding,padding))
@@ -122,36 +122,65 @@ function createModel()
     print('Creating model')
    
     local r = {}
-    local transformNetwork = nn.Sequential()
-    local fullNetwork = nn.Sequential()
+    r.transformNet = nn.Sequential()
+    r.fullNet = nn.Sequential()
    
-    addConvElement(transformNetwork, 3, 32, 9, 1, 0)
-    addConvElement(transformNetwork, 32, 64, 3, 2, 0)
-    addConvElement(transformNetwork, 64, 128, 3, 2, 0)
+    if opt.trainingMovieModel then
+        addConvElement(r.transformNet, 6, 32, 9, 1, 0)
+    else
+        addConvElement(r.transformNet, 3, 32, 9, 1, 0)
+    end
+    addConvElement(r.transformNet, 32, 64, 3, 2, 0)
+    addConvElement(r.transformNet, 64, 128, 3, 2, 0)
 
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
-    addResidualBlock(transformNetwork, 128, 128, 3, 1, 0)
+    addResidualBlock(r.transformNet, 128, 128, 3, 1, 0)
+    addResidualBlock(r.transformNet, 128, 128, 3, 1, 0)
+    addResidualBlock(r.transformNet, 128, 128, 3, 1, 0)
+    addResidualBlock(r.transformNet, 128, 128, 3, 1, 0)
+    addResidualBlock(r.transformNet, 128, 128, 3, 1, 0)
 
-    addUpConvElement(transformNetwork, 128, 64, 3, 2, 0, 0)
-    addUpConvElement(transformNetwork, 64, 32, 3, 2, 0, 0)
+    addUpConvElement(r.transformNet, 128, 64, 3, 2, 0, 0)
+    addUpConvElement(r.transformNet, 64, 32, 3, 2, 0, 0)
 
-    transformNetwork:add(nn.SpatialConvolution(32, 3, 3, 3, 1, 1, 0, 0))
+    r.transformNet:add(nn.SpatialConvolution(32, 3, 3, 3, 1, 1, 0, 0))
 
-    local vggContentNetwork, vggTotalNetwork, contentLossModule, styleLossModules = createVGG()
+    r.vggContentNet, r.vggTotalNet, r.contentLossMod, r.styleLossMods = createVGG()
     
-    fullNetwork:add(transformNetwork)
+    r.fullNet:add(r.transformNet)
     
     if opt.TVWeight > 0 then
         print('adding TV loss')
-        local tvModule = nn.TVLoss(opt.TVWeight, opt.batchSize):float()
-        tvModule:cuda()
-        fullNetwork:add(tvModule)
+        r.TVLossMod = nn.TVLoss(opt.TVWeight, opt.batchSize):float()
+        r.TVLossMod:cuda()
+        r.fullNet:add(r.TVLossMod)
     end
     
-    fullNetwork:add(vggTotalNetwork)
+    r.pixelLossModule = nil
+    if opt.trainingMovieModel then
+        print('adding pixel loss')
+        local contentBatch = torch.FloatTensor(opt.batchSize, 3, opt.cropSize, opt.cropSize)
+        local norm = false
+        r.pixelLossModule = nn.ContentLoss(opt.predecessorMatchWeight, contentBatch, norm):float()
+        r.pixelLossModule:cuda()
+        r.fullNet:add(r.pixelLossModule) 
+    end
+    
+    r.fullNet:add(r.vggTotalNet)
 
-    return fullNetwork, transformNetwork, vggTotalNetwork, vggContentNetwork, TVLossModule, contentLossModule, styleLossModules
+    cudnn.convert(r.fullNet, cudnn)
+    cudnn.convert(r.vggContentNet, cudnn)
+
+    -- 3. Convert model to CUDA
+    print('==> Converting model to CUDA')
+    r.fullNet = r.fullNet:cuda()
+    r.vggContentNetwork = r.vggContentNet:cuda()
+
+    if opt.printModel then
+        print('=> Model')
+        print(r.fullNet)
+    end
+
+    collectgarbage()
+
+    return r
 end

@@ -1,14 +1,6 @@
 
 require 'optim'
 
---[[
-   1. Setup SGD optimization state and learning rate schedule
-   2. Create loggers.
-   3. train - this function handles the high-level training loop,
-              i.e. load data, train model, save model and state to disk
-   4. trainBatch - Used by train() to train a single batch after the data is loaded.
-]]--
-
 -- Setup a reused optimization state (for adam/sgd).
 local optimState = {
     learningRate = 0.0
@@ -16,11 +8,6 @@ local optimState = {
 
 -- Learning rate annealing schedule. We will build a new optimizer for
 -- each epoch.
---
--- By default we follow a known recipe for a 55-epoch training. If
--- the learningRate command-line parameter has been specified, though,
--- we trust the user is doing something manual, and will use her
--- exact settings for all optimization.
 --
 -- Return values:
 --    diff to apply to optimState,
@@ -44,8 +31,9 @@ end
 
 -- 2. Create loggers.
 trainLogger = optim.Logger(paths.concat(opt.outDir, 'train.log'))
-local batchNumber
+local batchNumber = 0
 local totalBatchCount = 0
+local lossEpoch = 0
 
 -- 3. train - this function handles the high-level training loop,
 --            i.e. load data, train model, save model and state to disk
@@ -64,12 +52,12 @@ function train(imageLoader)
     cutorch.synchronize()
 
     -- set the dropouts to training mode
-    fullNetwork:training()
+    model.fullNet:training()
 
     local tm = torch.Timer()
     lossEpoch = 0
     for i = 1, opt.epochSize do
-        local batch = sampleBatch(imageLoader)
+        local batch = sampleBatchSingleFrame(imageLoader)
         trainBatch(batch.inputs, batch.labels)
     end
     
@@ -104,7 +92,7 @@ local labels = torch.CudaTensor()
 local timer = torch.Timer()
 local dataTimer = torch.Timer()
 
-local parameters, gradParameters = fullNetwork:getParameters()
+local parameters, gradParameters = model.fullNet:getParameters()
 
 -- Run it through the network once to get the proper size for the gradient
 -- All the gradients will come from the extra loss modules, so we just pass
@@ -123,38 +111,38 @@ function trainBatch(inputsCPU, labelsCPU)
     labels:resize(labelsCPU:size()):copy(labelsCPU)
 
     if describeNets and totalBatchCount == 0 then
-        describeNet(fullNetwork, inputs, opt.outDir .. 'full/')
-        describeNet(vggContentNetwork, labels, opt.outDir .. 'content/')
+        describeNet(model.fullNet, inputs, opt.outDir .. 'full/')
+        describeNet(model.vggContentNet, labels, opt.outDir .. 'content/')
     end
     
     if not zeroGradOutputs then
-        local output = fullNetwork:forward(inputs)
+        local output = model.fullNet:forward(inputs)
         zeroGradOutputs = inputs.new(#output):zero()
     end
 
     local loss, contentTargets
-    feval = function(x)
-        contentTargets = vggContentNetwork:forward(labels):clone()
-        contentLossModule.target = contentTargets
+    local function feval(x)
+        contentTargets = model.vggContentNet:forward(labels):clone()
+        model.contentLossMod.target = contentTargets
         
         if totalBatchCount % 100 == 0 then
             local inClone = labels[1]:clone()
             --inClone:add(0.5)
             inClone = caffeDeprocess(inClone)
             
-            local outClone = transformNetwork:forward(inputs)[1]:clone()
+            local outClone = model.transformNet:forward(inputs)[1]:clone()
             outClone = caffeDeprocess(outClone)
             
-            image.save(opt.outDir .. 'samples/sample' .. totalBatchCount .. '_in.png', inClone)
-            image.save(opt.outDir .. 'samples/sample' .. totalBatchCount .. '_out.png', outClone)
+            image.save(opt.outDir .. 'samples/sample' .. totalBatchCount .. '_in.jpg', inClone)
+            image.save(opt.outDir .. 'samples/sample' .. totalBatchCount .. '_out.jpg', outClone)
         end
         
-        fullNetwork:zeroGradParameters()
-        fullNetwork:forward(inputs)
-        fullNetwork:backward(inputs, zeroGradOutputs)
+        model.fullNet:zeroGradParameters()
+        model.fullNet:forward(inputs)
+        model.fullNet:backward(inputs, zeroGradOutputs)
         
-        loss = contentLossModule.loss
-        for i, mod in ipairs(styleLossModules) do
+        loss = model.contentLossMod.loss
+        for i, mod in ipairs(model.styleLossMods) do
             loss = loss + mod.loss
             
             if totalBatchCount % 1000 == 0 then
@@ -164,7 +152,7 @@ function trainBatch(inputsCPU, labelsCPU)
             end
         end
         
-        vggTotalNetwork:zeroGradParameters()
+        model.vggTotalNet:zeroGradParameters()
         
         return loss, gradParameters
     end
@@ -178,8 +166,8 @@ function trainBatch(inputsCPU, labelsCPU)
         epoch, batchNumber, opt.epochSize, timer:time().real, loss,
         optimState.learningRate, dataLoadingTime))
         
-    print(string.format('  Content loss: %f', contentLossModule.loss))
-    for i, mod in ipairs(styleLossModules) do
+    print(string.format('  Content loss: %f', model.contentLossMod.loss))
+    for i, mod in ipairs(model.styleLossMods) do
         print(string.format('  Style %d loss: %f', i, mod.loss))
     end
 

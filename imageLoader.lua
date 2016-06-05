@@ -5,10 +5,10 @@ require 'image'
 function makeImageLoader()
     print('Initializing images from: ' .. opt.imageList)
     
-    local result = {}
-    result.imageList = readAllLines(opt.imageList)
-    print('loaded ' .. #result.imageList .. ' images')
-    return result
+    local r = {}
+    r.imageList = util.readAllLines(opt.imageList)
+    print('loaded ' .. #r.imageList .. ' images')
+    return r
 end
 
 local loadSize   = {3, opt.imageSize, opt.imageSize}
@@ -47,7 +47,7 @@ local function loadAndCropImage(path)
    return out
 end
 
-function sampleBatch(imageLoader)
+function sampleBatchSingleFrame(imageLoader)
     -- pick an index of the datapoint to load next
     local reflectionPadding = 50
     local batchInputs = torch.FloatTensor(opt.batchSize, 3, opt.cropSize + reflectionPadding * 2, opt.cropSize + reflectionPadding * 2)
