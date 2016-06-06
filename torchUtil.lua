@@ -172,6 +172,9 @@ function reflectionPadImageHorizontal(tensor, p)
     return result
 end
 
+--local testImg = image.load(opt.styleImage)
+--local paddedImg = reflectionPadImage(testImg, 100)
+--image.save(opt.outDir .. 'padded.png', paddedImg)
 function reflectionPadImage(tensor, padding)
     local result = reflectionPadImageVertical(tensor, padding)
     result = reflectionPadImageHorizontal(result, padding)

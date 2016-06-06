@@ -37,7 +37,7 @@ local lossEpoch = 0
 
 -- 3. train - this function handles the high-level training loop,
 --            i.e. load data, train model, save model and state to disk
-function train(imageLoader)
+function train(imageList)
     print('==> doing epoch on training data:')
     print("==> online epoch # " .. epoch)
 
@@ -57,7 +57,7 @@ function train(imageLoader)
     local tm = torch.Timer()
     lossEpoch = 0
     for i = 1, opt.epochSize do
-        local batch = sampleBatchSingleFrame(imageLoader)
+        local batch = sampleBatchSingleFrame(imageList)
         trainBatch(batch.inputs, batch.labels)
     end
     
@@ -79,9 +79,11 @@ function train(imageLoader)
 
     -- clear the intermediate states in the model before saving to disk
     -- this saves lots of disk space
-    transformNetwork:clearState()
+    model.transformNet:clearState()
     
-    torch.save(opt.outDir .. 'models/transform' .. epoch .. '.t7', transformNetwork)
+    torch.save(opt.outDir .. 'models/transform' .. epoch .. '.t7', model.transformNet)
+    
+    
 end
 
 -------------------------------------------------------------------------------------------

@@ -10,14 +10,6 @@ torch.setdefaulttensortype('torch.FloatTensor')
 local opts = paths.dofile('opts.lua')
 opt = opts.parse(arg)
 
---local testImg = image.load(opt.styleImage)
---local paddedImg = reflectionPadImage(testImg, 100)
---image.save(opt.outDir .. 'padded.png', paddedImg)
-
---local allImages = getFileListRecursive('/home/mdfisher/ssd2/ImageNet/CLS-LOC/train/')
---local allImages = getFileListRecursive('/home/mdfisher/ssd2/COCO/train2014/')
---writeAllLines(opt.imageList, allImages)
-
 --paths.dofile('movieProcessor.lua')
 --extractAllClips()
 --transformAllClips('out/transformPaintingA.t7')
@@ -31,7 +23,7 @@ paths.dofile('threadPool.lua')
 
 model = createModel()
 
-local imageLoader = makeImageLoader()
+local imageList = loadImageList()
 
 cutorch.setDevice(opt.GPU) -- by default, use GPU 1
 torch.manualSeed(opt.manualSeed)
@@ -46,7 +38,7 @@ paths.dofile('train.lua')
 epoch = 1
 
 for i=1,opt.epochCount do
-   train(imageLoader)
+   train(imageList)
    epoch = epoch + 1
 end
 

@@ -50,4 +50,8 @@ function M.writeAllLines(file, lines)
     end
 end
 
+function M.zeroPad(int, length)
+    return string.format( "%03d", length )
+end
+
 return M

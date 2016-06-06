@@ -1,4 +1,10 @@
 
+if package.loaded.common then
+    return
+end
+
+package.loaded.common = true
+
 require 'lfs'
 require 'torch'
 require 'cutorch'
@@ -10,10 +16,3 @@ require 'xlua'
 require 'optim'
 require 'image'
 require 'lfs'
-
-
-if not package.loaded.common then
-    return
-end
-
-package.loaded.common = true

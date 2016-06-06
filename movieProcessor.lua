@@ -80,6 +80,7 @@ function transformAllClips(modelFilename)
     transformNetwork:evaluate()
     
     local transformSize = 256
+    local moviePairsList = {}
     
     for _,movie in ipairs(movieList) do
         local baseOutDir = opt.movieClipDir .. movie[2] .. '/'
@@ -89,8 +90,15 @@ function transformAllClips(modelFilename)
             local inDir = clipDir .. 'cropped/'
             local outDir = clipDir .. opt.styleName .. transformSize .. '/'
             transformClipDirectory(transformNetwork, inDir, outDir, transformSize, transformSize)
+            for f = 1, opt.movieClipLength - 1 do
+                local filenameA = outDir .. 'clip' .. util.zeroPad(f, 3) .. '.jpg'
+                local filenameB = outDir .. 'clip' .. util.zeroPad(f + 1, 3) .. '.jpg'
+                table.insert(moviePairsList, filenameA .. '|' .. filenameB)
+            end
         end
     end
+    
+    writeAllLines(opt.imageListFramePairs, moviePairsList)
 end
 
 function transformClipDirectory(transformNetwork, dirIn, dirOut, resizeW, resizeH)
